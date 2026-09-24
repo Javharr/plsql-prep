@@ -1,0 +1,266 @@
+{
+  "schema": [
+    {
+      "table": "departments",
+      "rows": 6,
+      "columns": "dept_id · dept_name · location · budget",
+      "note": "Отдел 60 (HR) — без сотрудников, location и budget = NULL."
+    },
+    {
+      "table": "employees",
+      "rows": 20,
+      "columns": "emp_id · first_name · last_name · email · phone · hire_date · job_title · salary · commission_pct · manager_id · dept_id",
+      "note": "commission_pct заполнен только у троих. Телефон — у четверых. Сотрудник 152 без отдела. У CEO (100) нет manager_id. Двое полных тёзок: Sardor Nazarov, 111 и 122."
+    },
+    {
+      "table": "customers",
+      "rows": 10,
+      "columns": "cust_id · cust_name · city · country · signup_date · email",
+      "note": "У троих email = NULL. Клиент 1010 (Kappa Textile) не сделал ни одного заказа."
+    },
+    {
+      "table": "products",
+      "rows": 12,
+      "columns": "prod_id · prod_name · category · price · in_stock",
+      "note": "Категории: Electronics, Accessories, Furniture, Hardware. У товара 5012 (UPS) in_stock = 0."
+    },
+    {
+      "table": "orders",
+      "rows": 20,
+      "columns": "order_id · cust_id · emp_id · order_date · status",
+      "note": "Статусы: NEW, PAID, SHIPPED, CANCELLED. У заказа 9008 emp_id = NULL — важно для NOT IN."
+    },
+    {
+      "table": "order_items",
+      "rows": 34,
+      "columns": "order_id · line_no · prod_id · qty · unit_price",
+      "note": "Первичный ключ составной: order_id + line_no. qty — количество в заказе, не остаток на складе."
+    }
+  ],
+  "lessons": [
+    {
+      "id": "l01",
+      "num": "01",
+      "title": "SELECT, WHERE и NULL",
+      "subtitle": "Фундамент: откуда берутся строки и почему NULL ломает интуицию",
+      "steps": [
+        {
+          "id": "l01s1",
+          "title": "DUAL и первый SELECT",
+          "status": "done",
+          "theory": "<p>В Oracle у <code>SELECT</code> обязателен <code>FROM</code>. Когда считать нечего — берут служебную таблицу <b>DUAL</b>: одна строка, один столбец.</p><p>Строки склеиваются оператором <code>||</code>, не плюсом. Одинарные кавычки — текст, двойные — имя объекта или алиас.</p>",
+          "examples": [
+            { "sql": "SELECT 2 + 2 FROM dual;", "out": "4" },
+            { "sql": "SELECT SYSDATE FROM dual;", "out": "текущие дата и время" },
+            { "sql": "SELECT first_name || ' ' || last_name AS full_name FROM employees;", "out": "Alisher Karimov" }
+          ],
+          "task": "Выведи полное имя и должность сотрудников с зарплатой больше 3000.",
+          "solution": "SELECT first_name || ' ' || last_name AS full_name,\n       job_title\n  FROM employees\n WHERE salary > 3000;"
+        },
+        {
+          "id": "l01s2",
+          "title": "Типы данных Oracle",
+          "status": "done",
+          "theory": "<p><code>NUMBER(p,s)</code> — все числа: p — всего значащих цифр, s — после запятой. Отдельных int и bigint нет.</p><p><code>VARCHAR2(n)</code> — строка. Не <code>VARCHAR</code> и не <code>TEXT</code>.</p><p><code>DATE</code> — дата <b>и время до секунды</b>, всегда. Если время не указали, там 00:00:00. Отсюда почти все ошибки с диапазонами дат.</p>",
+          "examples": [
+            { "sql": "SELECT column_name, data_type\n  FROM user_tab_columns\n WHERE table_name = 'EMPLOYEES';", "out": "имена объектов в словаре — в ВЕРХНЕМ регистре" }
+          ],
+          "task": "Посмотри типы столбцов таблицы products через user_tab_columns.",
+          "solution": "SELECT column_name, data_type, data_length, nullable\n  FROM user_tab_columns\n WHERE table_name = 'PRODUCTS'\n ORDER BY column_id;"
+        },
+        {
+          "id": "l01s3",
+          "title": "WHERE: операторы отбора",
+          "status": "done",
+          "theory": "<p><code>=</code>, <code>&lt;&gt;</code>, <code>BETWEEN</code> (обе границы включаются), <code>IN</code>, <code>LIKE</code>, <code>IS NULL</code>.</p><p>В <code>LIKE</code>: <code>%</code> — любое число символов, <code>_</code> — ровно один. Сравнение строк чувствительно к регистру: <code>'Developer'</code> и <code>'developer'</code> — разные строки.</p>",
+          "examples": [
+            { "sql": "WHERE salary BETWEEN 2500 AND 4000", "out": "включая 2500 и 4000" },
+            { "sql": "WHERE job_title LIKE '%Developer'", "out": "должности, заканчивающиеся на Developer" },
+            { "sql": "WHERE dept_id IN (10, 20)", "out": "то же, что dept_id = 10 OR dept_id = 20" }
+          ],
+          "task": "Сотрудники с зарплатой от 2500 до 4000 включительно, из отделов 10 или 20.",
+          "solution": "SELECT emp_id, salary, dept_id\n  FROM employees\n WHERE salary BETWEEN 2500 AND 4000\n   AND dept_id IN (10, 20);"
+        },
+        {
+          "id": "l01s4",
+          "title": "NULL и третье состояние UNKNOWN",
+          "status": "done",
+          "theory": "<p>NULL — не значение, а его отсутствие. Механизм в три шага:</p><p>1. Любое сравнение с NULL даёт не TRUE и не FALSE, а <b>UNKNOWN</b>. Даже <code>NULL = NULL</code>.<br>2. <code>WHERE</code> оставляет только строки с TRUE — FALSE и UNKNOWN отбрасываются одинаково.<br>3. Поэтому <code>col = NULL</code> всегда возвращает пусто. Проверять надо через <code>IS NULL</code>.</p><p>Арифметика с NULL даёт NULL (лечится <code>NVL(x, 0)</code>). Конкатенация — исключение: <code>'x' || NULL || 'y'</code> = <code>xy</code>. И главное отличие Oracle: <b>пустая строка <code>''</code> — это и есть NULL</b>.</p>",
+          "examples": [
+            { "sql": "WHERE commission_pct = NULL", "out": "0 строк ВСЕГДА" },
+            { "sql": "WHERE commission_pct IS NULL", "out": "17 строк" },
+            { "sql": "salary + salary * NVL(commission_pct, 0)", "out": "без NVL у 17 из 20 вышел бы NULL" }
+          ],
+          "task": "Найди сотрудника без отдела и объясни словами, почему dept_id = NULL его не находит.",
+          "solution": "SELECT * FROM employees WHERE dept_id IS NULL;\n-- Сравнение с NULL даёт UNKNOWN, а WHERE оставляет только TRUE."
+        },
+        {
+          "id": "l01s5",
+          "title": "AND и OR",
+          "status": "done",
+          "theory": "<p><code>AND</code> — оба условия у одной и той же строки, сужает. <code>OR</code> — хотя бы одно, объединяет.</p><p>Проверочный вопрос: «одна и та же строка должна удовлетворять обоим условиям сразу?» Да — <code>AND</code>, достаточно одного — <code>OR</code>.</p><p>Человеческое «и», перечисляющее <b>разные группы строк</b> («покажи дорогие товары и товары без остатка»), в SQL почти всегда <code>OR</code>.</p><p><code>AND</code> приоритетнее <code>OR</code>, а переносы строк на смысл не влияют — при смешивании ставь скобки.</p>",
+          "examples": [
+            { "sql": "WHERE price > 1000 OR in_stock = 0", "out": "4 строки: три дорогих товара и UPS" },
+            { "sql": "WHERE price > 1000 AND in_stock = 0", "out": "0 строк — таких товаров нет" },
+            { "sql": "WHERE category = 'Hardware' AND (price > 1000 OR in_stock = 0)", "out": "скобки обязательны" }
+          ],
+          "task": "Товары с нулевым остатком и товары дороже 1000 — одним запросом.",
+          "solution": "SELECT prod_id, prod_name, price, in_stock\n  FROM products\n WHERE price > 1000\n    OR in_stock = 0;"
+        },
+        {
+          "id": "l01s6",
+          "title": "Порядок выполнения запроса",
+          "status": "done",
+          "theory": "<p>База выполняет запрос не сверху вниз, а так:</p><p><code>FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY</code></p><p>Отсюда следствие: алиас, заданный в <code>SELECT</code>, <b>не виден в <code>WHERE</code></b> — на тот момент его ещё не существует (<code>ORA-00904</code>). В <code>ORDER BY</code> алиас работает: он выполняется последним.</p>",
+          "examples": [
+            { "sql": "SELECT salary * 12 AS annual FROM employees WHERE annual > 50000;", "out": "ORA-00904: invalid identifier" },
+            { "sql": "SELECT salary * 12 AS annual FROM employees WHERE salary * 12 > 50000;", "out": "работает" },
+            { "sql": "SELECT salary * 12 AS annual FROM employees ORDER BY annual;", "out": "тоже работает" }
+          ],
+          "task": "Объясни себе, почему первый запрос падает, а третий — нет.",
+          "solution": "WHERE выполняется раньше SELECT, поэтому алиаса ещё нет.\nORDER BY выполняется последним, когда алиас уже создан."
+        }
+      ]
+    },
+    {
+      "id": "l02",
+      "num": "02",
+      "title": "Функции Oracle",
+      "subtitle": "Строки, числа, даты — по одной функции за шаг",
+      "steps": [
+        {
+          "id": "l02s1",
+          "title": "SUBSTR — вырезать кусок строки",
+          "status": "done",
+          "theory": "<p><code>SUBSTR(строка, откуда, сколько)</code>. Символы считаются <b>с 1</b>, не с 0.</p><p>Третий аргумент можно не писать — возьмётся всё до конца строки. Отрицательная позиция считает с конца.</p><p>Название — от <b>SUB</b>string, отсюда порядок букв.</p>",
+          "examples": [
+            { "sql": "SUBSTR('Oracle', 2, 3)", "out": "rac" },
+            { "sql": "SUBSTR('Karimov', 4)", "out": "imov" },
+            { "sql": "SUBSTR('Tashkent', -4)", "out": "kent" }
+          ],
+          "task": "Выведи emp_id и первую букву имени каждого сотрудника.",
+          "solution": "SELECT emp_id,\n       SUBSTR(first_name, 1, 1) AS first_letter\n  FROM employees;",
+          "mistakes": [
+            "SUBST и SUBSRT — опечатки в имени функции. В DataGrip набирай SUBS и жми Ctrl+Space.",
+            "SUBSTR('first_name', 1, 1) — имя столбца в кавычках превращается в текст, и у всех строк вернётся буква f.",
+            "AS initial → ORA-00923: INITIAL зарезервировано под STORAGE (INITIAL ...)."
+          ]
+        },
+        {
+          "id": "l02s2",
+          "title": "INSTR — найти позицию символа",
+          "status": "current",
+          "theory": "<p><code>INSTR(строка, что_ищем)</code> возвращает <b>номер символа</b>, с которого начинается подстрока. Если не нашлось — <code>0</code>, а не NULL.</p><p>Счёт тоже с 1. Сам по себе <code>INSTR</code> нужен редко — почти всегда он идёт в паре с <code>SUBSTR</code>.</p>",
+          "examples": [
+            { "sql": "INSTR('info@alfa.uz', '@')", "out": "5" },
+            { "sql": "INSTR('Karimov', 'z')", "out": "0 — нет такого символа" }
+          ],
+          "task": "Выведи cust_name, email и позицию символа @ в нём. Посмотри, что вернётся у клиента без email.",
+          "solution": "SELECT cust_name,\n       email,\n       INSTR(email, '@') AS at_position\n  FROM customers;\n-- У клиента с email = NULL вернётся NULL, а не 0:\n-- функция от NULL даёт NULL."
+        },
+        {
+          "id": "l02s3",
+          "title": "SUBSTR + INSTR: логин из email",
+          "status": "next",
+          "theory": "<p>Главная связка для разбора строк. <code>INSTR</code> находит разделитель, <code>SUBSTR</code> режет по найденной позиции.</p><p>Всё <b>до</b> символа: длина на единицу меньше позиции, иначе захватишь сам разделитель.<br>Всё <b>после</b>: старт на единицу больше позиции, длину не указываем.</p>",
+          "examples": [
+            { "sql": "SUBSTR(email, 1, INSTR(email, '@') - 1)", "out": "info" },
+            { "sql": "SUBSTR(email, INSTR(email, '@') + 1)", "out": "alfa.uz" }
+          ],
+          "task": "Выведи для сотрудников логин (до @) и домен (после @) двумя столбцами.",
+          "solution": "SELECT email,\n       SUBSTR(email, 1, INSTR(email, '@') - 1) AS login,\n       SUBSTR(email, INSTR(email, '@') + 1)   AS domain\n  FROM employees;"
+        },
+        {
+          "id": "l02s4",
+          "title": "UPPER, LOWER, INITCAP, LENGTH",
+          "status": "next",
+          "theory": "<p><code>UPPER</code> и <code>LOWER</code> меняют регистр, <code>INITCAP</code> делает первую букву каждого слова заглавной, остальные строчными. <code>LENGTH</code> считает длину.</p><p>Ловушка: <code>LENGTH('')</code> даёт <b>NULL</b>, а не 0 — пустая строка в Oracle это NULL.</p><p>Поиск без учёта регистра: <code>WHERE UPPER(job_title) = 'DEVELOPER'</code>. Но помни — функция над столбцом мешает обычному индексу (урок 09).</p>",
+          "examples": [
+            { "sql": "INITCAP('iVAN pETROV')", "out": "Ivan Petrov" },
+            { "sql": "LENGTH('Oracle')", "out": "6" },
+            { "sql": "LENGTH('')", "out": "NULL" }
+          ],
+          "task": "Выведи фамилию в верхнем регистре и её длину. Отсортируй по длине по убыванию.",
+          "solution": "SELECT UPPER(last_name) AS last_name,\n       LENGTH(last_name) AS len\n  FROM employees\n ORDER BY len DESC;"
+        },
+        {
+          "id": "l02s5",
+          "title": "REPLACE, TRIM, LPAD",
+          "status": "next",
+          "theory": "<p><code>REPLACE(строка, что, на_что)</code> меняет <b>все</b> вхождения.</p><p><code>TRIM</code> убирает пробелы по краям — важно для данных, введённых людьми.</p><p><code>LPAD(строка, длина, символ)</code> добивает слева до нужной длины: номера с ведущими нулями. <code>RPAD</code> — справа.</p>",
+          "examples": [
+            { "sql": "REPLACE('+998901112233', '+998', '8')", "out": "8901112233" },
+            { "sql": "TRIM('  abc  ')", "out": "abc" },
+            { "sql": "LPAD('7', 3, '0')", "out": "007" }
+          ],
+          "task": "У сотрудников с телефоном замени +998 на 8. Тех, у кого телефона нет, не показывай.",
+          "solution": "SELECT emp_id,\n       REPLACE(phone, '+998', '8') AS phone_local\n  FROM employees\n WHERE phone IS NOT NULL;"
+        },
+        {
+          "id": "l02s6",
+          "title": "ROUND, TRUNC, MOD",
+          "status": "next",
+          "theory": "<p><code>ROUND(n, знаков)</code> округляет по правилам математики, <code>TRUNC(n, знаков)</code> просто отрезает лишнее.</p><p>Отрицательное число знаков округляет слева от запятой: <code>ROUND(1567, -2)</code> → 1600.</p><p><code>MOD(a, b)</code> — остаток от деления. Оператора <code>%</code> в Oracle нет.</p>",
+          "examples": [
+            { "sql": "ROUND(12.567, 1)", "out": "12.6" },
+            { "sql": "TRUNC(12.567, 1)", "out": "12.5" },
+            { "sql": "MOD(10, 3)", "out": "1" }
+          ],
+          "task": "Выведи зарплату с комиссией (NULL считать нулём) двумя столбцами: через ROUND и через TRUNC. Найди, у кого они различаются.",
+          "solution": "SELECT emp_id,\n       ROUND(salary * (1 + NVL(commission_pct, 0))) AS by_round,\n       TRUNC(salary * (1 + NVL(commission_pct, 0))) AS by_trunc\n  FROM employees;"
+        },
+        {
+          "id": "l02s7",
+          "title": "Даты: арифметика днями",
+          "status": "next",
+          "theory": "<p><code>дата + число</code> — это плюс <b>дни</b>. Дробь — часть дня: <code>+ 1/24</code> это час, <code>+ 1/1440</code> — минута.</p><p><code>дата − дата</code> даёт <b>количество дней</b>, дробное, потому что в дате есть время.</p><p><code>дата + дата</code> — ошибка, так нельзя.</p>",
+          "examples": [
+            { "sql": "SYSDATE + 10", "out": "через 10 дней" },
+            { "sql": "DATE '2024-01-31' + 1", "out": "01.02.2024" },
+            { "sql": "SYSDATE - hire_date", "out": "сколько дней прошло, дробное" }
+          ],
+          "task": "Для каждого заказа выведи дату заказа и дату «оплатить до» — через 10 дней.",
+          "solution": "SELECT order_id,\n       order_date,\n       order_date + 10 AS pay_until\n  FROM orders;"
+        },
+        {
+          "id": "l02s8",
+          "title": "TRUNC для дат, LAST_DAY, ADD_MONTHS",
+          "status": "next",
+          "theory": "<p><code>TRUNC(d)</code> обрезает время до полуночи. <code>TRUNC(d, 'MM')</code> — первое число месяца, <code>TRUNC(d, 'YYYY')</code> — 1 января.</p><p><code>LAST_DAY(d)</code> — последний день месяца, високосный год учитывается сам.</p><p><code>ADD_MONTHS(d, n)</code> прибавляет месяцы. Хитрость: если исходная дата — последний день месяца, результат тоже станет последним днём.</p><p>«Записи за сегодня» пишутся так: <code>d &gt;= TRUNC(SYSDATE) AND d &lt; TRUNC(SYSDATE) + 1</code>. Не <code>d = SYSDATE</code> — это текущая секунда.</p>",
+          "examples": [
+            { "sql": "TRUNC(DATE '2024-03-17', 'MM')", "out": "01.03.2024" },
+            { "sql": "LAST_DAY(DATE '2024-02-10')", "out": "29.02.2024" },
+            { "sql": "ADD_MONTHS(DATE '2019-09-30', 3)", "out": "31.12.2019 — не 30-е!" }
+          ],
+          "task": "Для каждого заказа выведи первое и последнее число месяца, в котором он оформлен.",
+          "solution": "SELECT order_id,\n       order_date,\n       TRUNC(order_date, 'MM') AS month_start,\n       LAST_DAY(order_date)    AS month_end\n  FROM orders;"
+        },
+        {
+          "id": "l02s9",
+          "title": "MONTHS_BETWEEN и стаж",
+          "status": "next",
+          "theory": "<p><code>MONTHS_BETWEEN(дата1, дата2)</code> — сколько месяцев от второй даты до первой. Порядок важен: сначала <b>поздняя</b>, иначе получишь минус.</p><p>Результат дробный, поэтому для полных лет его делят на 12 и обрезают через <code>TRUNC</code>.</p><p>Почему не <code>(SYSDATE - hire_date) / 365</code>: високосные годы дают накопительную ошибку.</p>",
+          "examples": [
+            { "sql": "MONTHS_BETWEEN(DATE '2026-09-01', DATE '2026-06-01')", "out": "3" },
+            { "sql": "MONTHS_BETWEEN(DATE '2026-06-01', DATE '2026-09-01')", "out": "-3" },
+            { "sql": "TRUNC(MONTHS_BETWEEN(SYSDATE, hire_date) / 12)", "out": "полных лет стажа" }
+          ],
+          "task": "Выведи полное имя, дату найма в формате ДД.ММ.ГГГГ и стаж в полных годах.",
+          "solution": "SELECT first_name || ' ' || last_name                 AS full_name,\n       TO_CHAR(hire_date, 'DD.MM.YYYY')                AS hired,\n       TRUNC(MONTHS_BETWEEN(SYSDATE, hire_date) / 12)  AS years\n  FROM employees;"
+        },
+        {
+          "id": "l02s10",
+          "title": "EXTRACT — вытащить часть даты",
+          "status": "next",
+          "theory": "<p><code>EXTRACT(YEAR FROM d)</code>, <code>EXTRACT(MONTH FROM d)</code>, <code>EXTRACT(DAY FROM d)</code>.</p><p>Функции <code>MONTH()</code> в Oracle нет. И не фильтруй даты через <code>LIKE</code>: дата неявно превратится в строку по настройкам сессии, и формат может оказаться любым.</p>",
+          "examples": [
+            { "sql": "EXTRACT(YEAR FROM hire_date)", "out": "2021" },
+            { "sql": "WHERE EXTRACT(MONTH FROM hire_date) = 9", "out": "нанятые в сентябре любого года" }
+          ],
+          "task": "Найди сотрудников, у которых годовщина найма в текущем месяце.",
+          "solution": "SELECT emp_id, first_name, last_name, hire_date\n  FROM employees\n WHERE EXTRACT(MONTH FROM hire_date) = EXTRACT(MONTH FROM SYSDATE);"
+        }
+      ]
+    }
+  ]
+}
