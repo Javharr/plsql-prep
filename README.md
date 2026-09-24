@@ -2,35 +2,62 @@
 
 Учебник и тренажёр для подготовки к позиции PL/SQL developer: теория по шагам, задачи на учебной схеме и тест с разбором ошибок.
 
-Запросы выполняются в своём клиенте (DataGrip) на локальной Oracle 23ai Free — сайт базу не трогает.
-
-## Локальный запуск
-
-```bash
-npm install
-npm start
-# http://localhost:3000
-```
+Вход по логину и паролю, прогресс хранится в Postgres и одинаков на всех устройствах.
+Запросы пока выполняются в своём клиенте (DataGrip) на локальной Oracle 23ai Free.
 
 ## Деплой на Railway
 
 1. Запушить репозиторий на GitHub.
-2. Railway → New Project → Deploy from GitHub repo → выбрать этот репозиторий.
-3. Ничего настраивать не нужно: Railway сам увидит `package.json`, выполнит `npm install` и запустит `npm start`. Порт берётся из переменной `PORT`.
-4. Settings → Networking → Generate Domain, чтобы получить публичный адрес.
+2. Railway → **New Project → Deploy from GitHub repo** → выбрать этот репозиторий.
+3. В том же проекте: **+ Create → Database → PostgreSQL**.
+4. В сервисе сайта → **Variables** добавить:
+
+   | Переменная | Значение |
+   |---|---|
+   | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` — выбрать из подсказки, это ссылка на базу внутри Railway |
+   | `SIGNUP_CODE` | любая длинная строка, которую знаешь только ты — код для регистрации |
+
+5. **Settings → Networking → Generate Domain** — получить адрес сайта.
+6. Открыть сайт → «Нет аккаунта — зарегистрироваться» → логин, пароль, код из `SIGNUP_CODE`.
+
+Таблицы в базе создаются сами при старте. После регистрации `SIGNUP_CODE` можно удалить — регистрация закроется, вход продолжит работать.
 
 Проверка живости: `GET /healthz` отвечает `ok`.
 
-## Структура
+## Локальный запуск
+
+Нужен Postgres. Например, в Docker:
+
+```bash
+docker run -d --name plsql-pg -e POSTGRES_PASSWORD=pg -p 5432:5432 postgres:16
+npm install
+DATABASE_URL=postgres://postgres:pg@localhost:5432/postgres SIGNUP_CODE=local npm start
+# http://localhost:3000
+```
+
+## Как устроено
 
 ```
-server.js                      — express, отдаёт public/
+server.js                      — express: статика, вход, API прогресса
+db.js                          — подключение к Postgres и создание таблиц
 public/index.html              — каркас страницы
 public/styles.css              — стили, светлая и тёмная темы
-public/app.js                  — роутер, уроки, тест, схема
+public/app.js                  — вход, роутер, уроки, тест, схема
 public/content/lessons.json    — уроки и шаги: теория, примеры, задачи, решения
 public/content/questions.json  — банк вопросов для теста
 ```
+
+API:
+
+| Метод | Адрес | Что делает |
+|---|---|---|
+| POST | `/api/register` | регистрация по коду `SIGNUP_CODE` |
+| POST | `/api/login` | вход; не больше 10 неудачных попыток за 15 минут с одного IP |
+| POST | `/api/logout` | выход |
+| GET | `/api/me` | кто вошёл |
+| GET / PUT | `/api/progress` | прочитать / сохранить прогресс |
+
+Безопасность: пароли хранятся как bcrypt-хэш; сессия — случайный токен в httpOnly-куке, в базе лежит только его SHA-256; запись в API принимается только как JSON, что вместе с `SameSite=Lax` закрывает CSRF.
 
 ## Как добавить материал
 
@@ -49,7 +76,7 @@ public/content/questions.json  — банк вопросов для теста
 }
 ```
 
-`status` — `done`, `current` или `next`. Отметка «пройдено» и результаты теста хранятся в `localStorage` браузера, то есть отдельно на каждом устройстве.
+`status` — `done`, `current` или `next`. Отметки «пройдено» и результаты теста хранятся на сервере под логином.
 
 Новый вопрос теста — объект в `questions.json`:
 

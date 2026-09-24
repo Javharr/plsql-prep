@@ -1,34 +1,89 @@
 /* PL/SQL: подготовка — учебник и тренажёр.
-   Прогресс хранится в localStorage этого браузера. */
+   Прогресс хранится на сервере под логином и синхронизируется между устройствами.
+   localStorage — только локальный кэш на случай обрыва сети. */
 
 const app = document.getElementById("app");
 const footStats = document.getElementById("foot-stats");
+const footUser = document.getElementById("foot-user");
+const tabs = document.querySelector(".tabs");
 const KEYS = ["A", "B", "C", "D"];
+const CACHE_KEY = "plsql-prep";
 
 let DATA = null;      // lessons.json
 let QUESTIONS = [];   // questions.json
-let progress = load();
+let USER = null;      // { username }
+let progress = {};
+
+/* ---------------- API ---------------- */
+
+async function api(method, url, body) {
+  const res = await fetch(url, {
+    method,
+    credentials: "same-origin",
+    headers: body ? { "Content-Type": "application/json" } : {},
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  let data = null;
+  try { data = await res.json(); } catch (e) { /* пустой ответ */ }
+  if (!res.ok) {
+    const err = new Error((data && data.error) || `Ошибка ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
 
 /* ---------------- хранилище ---------------- */
 
-function load() {
-  try {
-    return JSON.parse(localStorage.getItem("plsql-prep") || "{}");
-  } catch (e) {
-    return {};
-  }
+function readCache() {
+  try { return JSON.parse(localStorage.getItem(CACHE_KEY) || "{}"); }
+  catch (e) { return {}; }
 }
 
+function writeCache() {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify(progress)); }
+  catch (e) { /* приватный режим — не страшно, главное на сервере */ }
+}
+
+let saveTimer = null;
+let saveState = "saved"; // saved | saving | offline
+
 function save() {
+  writeCache();
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(pushProgress, 600);
+}
+
+async function pushProgress() {
+  saveState = "saving";
+  renderFoot();
   try {
-    localStorage.setItem("plsql-prep", JSON.stringify(progress));
+    await api("PUT", "/api/progress", { data: progress });
+    saveState = "saved";
   } catch (e) {
-    /* приватный режим — просто работаем без сохранения */
+    if (e.status === 401) { USER = null; return viewAuth("Сессия истекла — войди снова."); }
+    saveState = "offline";
   }
+  renderFoot();
+}
+
+async function pullProgress() {
+  const { data } = await api("GET", "/api/progress");
+  const server = data || {};
+  const local = readCache();
+  // сервер главнее; из локального кэша добираем только то, чего на сервере нет
+  let added = false;
+  for (const [k, v] of Object.entries(local)) {
+    if (!(k in server) && v !== undefined && v !== null) { server[k] = v; added = true; }
+  }
+  progress = server;
+  writeCache();
+  if (added) await pushProgress();
 }
 
 function mark(id, value) {
-  progress[id] = value;
+  if (value === undefined) delete progress[id];
+  else progress[id] = value;
   save();
   renderFoot();
 }
@@ -61,6 +116,11 @@ function setTab(name) {
 }
 
 function renderFoot() {
+  if (!USER) {
+    footStats.textContent = "";
+    footUser.innerHTML = "";
+    return;
+  }
   const answered = QUESTIONS.filter((q) => progress["q:" + q.id]).length;
   const ok = QUESTIONS.filter((q) => progress["q:" + q.id] === "ok").length;
   const steps = DATA ? DATA.lessons.flatMap((l) => l.steps) : [];
@@ -68,6 +128,16 @@ function renderFoot() {
   footStats.textContent =
     `шагов пройдено ${doneSteps} из ${steps.length} · вопросов отвечено ${answered} из ${QUESTIONS.length}` +
     (answered ? ` · верно ${Math.round((ok / answered) * 100)}%` : "");
+  const sync = { saved: "сохранено", saving: "сохраняю…", offline: "нет связи — сохранено на устройстве" }[saveState];
+  footUser.innerHTML = `${esc(USER.username)} · <span class="sync ${saveState}">${sync}</span> · <a href="#" id="logout">выйти</a>`;
+  document.getElementById("logout").onclick = async (e) => {
+    e.preventDefault();
+    try { await api("POST", "/api/logout"); } catch (err) { /* всё равно выходим */ }
+    USER = null;
+    progress = {};
+    try { localStorage.removeItem(CACHE_KEY); } catch (err) {}
+    viewAuth();
+  };
 }
 
 /* ---------------- экран: список уроков ---------------- */
@@ -290,12 +360,78 @@ function viewSchema() {
       .join("")}`;
 }
 
+/* ---------------- экран: вход и регистрация ---------------- */
+
+function viewAuth(message, mode = "login") {
+  tabs.hidden = true;
+  renderFoot();
+  const reg = mode === "register";
+
+  app.innerHTML = `
+    <div class="auth">
+      <h1>${reg ? "Регистрация" : "Вход"}</h1>
+      <p class="lede">${reg
+        ? "Регистрация по коду-приглашению. Код задаётся в настройках Railway."
+        : "Прогресс хранится под твоим логином и одинаков на телефоне и ноутбуке."}</p>
+      ${message ? `<p class="notice">${esc(message)}</p>` : ""}
+      <form id="auth-form" novalidate>
+        <label for="username">Логин</label>
+        <input id="username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+        <label for="password">Пароль</label>
+        <input id="password" name="password" type="password" autocomplete="${reg ? "new-password" : "current-password"}" required>
+        ${reg ? `
+        <label for="code">Код приглашения</label>
+        <input id="code" name="code" autocomplete="off" autocapitalize="none" spellcheck="false" required>` : ""}
+        <p class="form-error" id="auth-error" hidden></p>
+        <button class="primary" type="submit" id="auth-submit">${reg ? "Создать аккаунт" : "Войти"}</button>
+      </form>
+      <button class="ghost" id="auth-switch" type="button">
+        ${reg ? "Уже есть аккаунт — войти" : "Нет аккаунта — зарегистрироваться"}
+      </button>
+    </div>`;
+
+  document.getElementById("auth-switch").onclick = () => viewAuth(null, reg ? "login" : "register");
+
+  const form = document.getElementById("auth-form");
+  const errBox = document.getElementById("auth-error");
+  const submit = document.getElementById("auth-submit");
+
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    errBox.hidden = true;
+    submit.disabled = true;
+    submit.textContent = reg ? "Создаю…" : "Вхожу…";
+    const body = {
+      username: form.username.value.trim(),
+      password: form.password.value,
+    };
+    if (reg) body.code = form.code.value.trim();
+    try {
+      const me = await api("POST", reg ? "/api/register" : "/api/login", body);
+      USER = me;
+      await pullProgress();
+      tabs.hidden = false;
+      route();
+    } catch (err) {
+      errBox.textContent = err.message;
+      errBox.hidden = false;
+      submit.disabled = false;
+      submit.textContent = reg ? "Создать аккаунт" : "Войти";
+    }
+  };
+
+  document.getElementById("username").focus();
+}
+
 /* ---------------- роутер ---------------- */
 
 function route() {
+  if (!USER) return viewAuth();
+  tabs.hidden = false;
   const hash = location.hash || "#/lessons";
   const parts = hash.slice(2).split("/");
   window.scrollTo(0, 0);
+  renderFoot();
 
   if (parts[0] === "lesson" && parts[1]) return viewLesson(parts[1]);
   if (parts[0] === "quiz") return viewQuizStart();
@@ -305,16 +441,37 @@ function route() {
 
 window.addEventListener("hashchange", route);
 
-Promise.all([
-  fetch("/content/lessons.json").then((r) => r.json()),
-  fetch("/content/questions.json").then((r) => r.json()),
-])
-  .then(([lessons, questions]) => {
+async function boot() {
+  try {
+    const [lessons, questions] = await Promise.all([
+      fetch("/content/lessons.json").then((r) => r.json()),
+      fetch("/content/questions.json").then((r) => r.json()),
+    ]);
     DATA = lessons;
     QUESTIONS = questions;
-    renderFoot();
-    route();
-  })
-  .catch((e) => {
+  } catch (e) {
     app.innerHTML = `<h1>Не загрузился контент</h1><p class="lede">${esc(e.message)}</p>`;
-  });
+    return;
+  }
+
+  try {
+    USER = await api("GET", "/api/me");
+  } catch (e) {
+    USER = null;
+    if (e.status !== 401) {
+      return viewAuth("Сервер не отвечает. Проверь соединение и обнови страницу.");
+    }
+  }
+
+  if (!USER) return viewAuth();
+
+  try {
+    await pullProgress();
+  } catch (e) {
+    progress = readCache();
+    saveState = "offline";
+  }
+  route();
+}
+
+boot();
