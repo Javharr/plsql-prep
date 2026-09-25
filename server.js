@@ -1,9 +1,11 @@
 import express from "express";
+import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import bcrypt from "bcryptjs";
 import { pool, migrate } from "./db.js";
+import { oracleEnabled, run as runSql, check as checkSql } from "./oracle.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -217,6 +219,59 @@ api.put("/progress", wrap(requireUser), wrap(async (req, res) => {
   res.json({ ok: true });
 }));
 
+/* ---------------- SQL: выполнение и проверка ---------------- */
+
+// эталоны для проверки берём с сервера, а не из запроса — подменить их из браузера нельзя
+let lessonsCache = { mtime: 0, steps: new Map() };
+function stepById(id) {
+  const file = path.join(__dirname, "public", "content", "lessons.json");
+  const { mtimeMs } = fs.statSync(file);
+  if (mtimeMs !== lessonsCache.mtime) {
+    const data = JSON.parse(fs.readFileSync(file, "utf8"));
+    const steps = new Map();
+    for (const l of data.lessons) for (const s of l.steps) steps.set(s.id, s);
+    lessonsCache = { mtime: mtimeMs, steps };
+  }
+  return lessonsCache.steps.get(id);
+}
+
+// не больше 30 запусков в минуту: защита от случайного цикла в интерфейсе
+const runLog = new Map();
+function tooManyRuns(userId) {
+  const now = Date.now();
+  const list = (runLog.get(userId) || []).filter((t) => now - t < 60_000);
+  list.push(now);
+  runLog.set(userId, list);
+  return list.length > 30;
+}
+
+api.get("/sql/status", wrap(requireUser), (_req, res) => {
+  res.json({ enabled: oracleEnabled });
+});
+
+api.post("/sql/run", wrap(requireUser), wrap(async (req, res) => {
+  if (!oracleEnabled) return res.status(503).json({ error: "Oracle пока не подключена к сайту." });
+  if (tooManyRuns(req.user.id)) return res.status(429).json({ error: "Слишком часто. Подожди минуту." });
+  const sql = String(req.body?.sql || "");
+  if (sql.length > 20_000) return res.status(400).json({ error: "Слишком длинный текст." });
+  try {
+    res.json(await runSql(sql));
+  } catch (e) {
+    if (e.userFacing) return res.status(400).json({ error: e.message, ms: e.ms });
+    throw e;
+  }
+}));
+
+api.post("/sql/check", wrap(requireUser), wrap(async (req, res) => {
+  if (!oracleEnabled) return res.status(503).json({ error: "Oracle пока не подключена к сайту." });
+  if (tooManyRuns(req.user.id)) return res.status(429).json({ error: "Слишком часто. Подожди минуту." });
+  const step = stepById(String(req.body?.stepId || ""));
+  if (!step?.check?.sql) return res.status(404).json({ error: "У этого шага нет автопроверки." });
+  const sql = String(req.body?.sql || "");
+  if (sql.length > 20_000) return res.status(400).json({ error: "Слишком длинный текст." });
+  res.json(await checkSql(sql, step.check.sql, { ordered: !!step.check.ordered }));
+}));
+
 app.use("/api", api);
 app.use("/api", (_req, res) => res.status(404).json({ error: "Нет такого адреса" }));
 
@@ -237,6 +292,7 @@ migrate()
     app.listen(PORT, () => {
       console.log(`plsql-prep слушает порт ${PORT}`);
       if (!SIGNUP_CODE) console.warn("SIGNUP_CODE не задан — регистрация закрыта.");
+      console.log(oracleEnabled ? "Oracle: подключение настроено" : "Oracle: переменные ORACLE_* не заданы — выполнение SQL выключено");
     });
   })
   .catch((e) => {

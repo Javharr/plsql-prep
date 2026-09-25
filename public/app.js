@@ -12,6 +12,7 @@ const CACHE_KEY = "plsql-prep";
 let DATA = null;      // lessons.json
 let QUESTIONS = [];   // questions.json
 let USER = null;      // { username }
+let SQL_ENABLED = false; // подключена ли Oracle к сайту
 let progress = {};
 
 /* ---------------- API ---------------- */
@@ -65,6 +66,11 @@ async function pushProgress() {
     saveState = "offline";
   }
   renderFoot();
+}
+
+async function loadSqlStatus() {
+  try { SQL_ENABLED = !!(await api("GET", "/api/sql/status")).enabled; }
+  catch (e) { SQL_ENABLED = false; }
 }
 
 async function pullProgress() {
@@ -190,6 +196,7 @@ function viewLesson(id) {
           <div class="theory">${s.theory}</div>
           ${ex ? `<table class="ex">${ex}</table>` : ""}
           <div class="task"><b>задание</b>${esc(s.task)}</div>
+          ${editorHtml(s)}
           ${mistakes}
           <details class="sol"><summary>Показать решение</summary><pre>${esc(s.solution)}</pre></details>
           ${s.status === "done" ? "" : `<button class="ghost" data-step="${s.id}" style="margin-top:14px">
@@ -215,6 +222,153 @@ function viewLesson(id) {
       if (el) { el.open = true; el.scrollIntoView({ block: "center" }); }
     };
   });
+
+  bindEditors(l);
+
+  // открыть текущий шаг сразу, чтобы не искать его
+  const current = l.steps.find((s) => !isDone(s) && s.status === "current");
+  if (current) document.getElementById(current.id).open = true;
+}
+
+/* ---------------- редактор SQL ---------------- */
+
+function editorHtml(s) {
+  if (!SQL_ENABLED) {
+    return `<p class="hint-muted">Выполнение запросов на сайте пока не подключено — решай в DataGrip.</p>`;
+  }
+  const saved = progress["sql:" + s.id] || "";
+  return `
+    <div class="editor" data-editor="${s.id}">
+      <textarea id="sql-${s.id}" class="sql" spellcheck="false" autocapitalize="none" autocomplete="off"
+        placeholder="Пиши запрос здесь. ⌘/Ctrl + Enter — выполнить">${esc(saved)}</textarea>
+      <div class="editor-actions">
+        <button class="run" data-run="${s.id}" type="button">Выполнить</button>
+        ${s.check ? `<button class="primary check" data-check="${s.id}" type="button">Проверить решение</button>` : ""}
+      </div>
+      <div class="result" id="res-${s.id}" aria-live="polite"></div>
+    </div>`;
+}
+
+const saveSqlTimers = {};
+function rememberSql(stepId, text) {
+  clearTimeout(saveSqlTimers[stepId]);
+  saveSqlTimers[stepId] = setTimeout(() => {
+    if ((progress["sql:" + stepId] || "") !== text) mark("sql:" + stepId, text || undefined);
+  }, 1500);
+}
+
+function bindEditors(lesson) {
+  if (!SQL_ENABLED) return;
+  for (const s of lesson.steps) {
+    const ta = document.getElementById("sql-" + s.id);
+    if (!ta) continue;
+    ta.addEventListener("input", () => rememberSql(s.id, ta.value));
+    ta.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        runStep(s, "run");
+      } else if (e.key === "Tab" && !e.shiftKey) {
+        e.preventDefault();
+        const { selectionStart: a, selectionEnd: b } = ta;
+        ta.setRangeText("  ", a, b, "end");
+        rememberSql(s.id, ta.value);
+      }
+    });
+  }
+  app.querySelectorAll("[data-run]").forEach((b) => {
+    b.onclick = () => runStep(lesson.steps.find((s) => s.id === b.dataset.run), "run");
+  });
+  app.querySelectorAll("[data-check]").forEach((b) => {
+    b.onclick = () => runStep(lesson.steps.find((s) => s.id === b.dataset.check), "check");
+  });
+}
+
+async function runStep(step, mode) {
+  const ta = document.getElementById("sql-" + step.id);
+  const box = document.getElementById("res-" + step.id);
+  const buttons = ta.closest(".editor").querySelectorAll("button");
+  const sql = ta.value;
+  if (!sql.trim()) {
+    box.innerHTML = `<div class="res-msg bad">Сначала напиши запрос.</div>`;
+    return;
+  }
+  if ((progress["sql:" + step.id] || "") !== sql) mark("sql:" + step.id, sql);
+
+  buttons.forEach((b) => (b.disabled = true));
+  box.innerHTML = `<div class="res-msg">${mode === "check" ? "Проверяю…" : "Выполняю…"}</div>`;
+
+  try {
+    if (mode === "check") {
+      const r = await api("POST", "/api/sql/check", { stepId: step.id, sql });
+      box.innerHTML = renderCheck(r);
+      if (r.ok && !isDone(step)) {
+        mark("s:" + step.id, "done");
+        const chip = document.querySelector(`#${step.id} > summary .chip`);
+        if (chip) { chip.className = "chip done"; chip.textContent = STATUS.done; }
+      }
+    } else {
+      const r = await api("POST", "/api/sql/run", { sql });
+      box.innerHTML = renderRun(r);
+    }
+  } catch (e) {
+    if (e.status === 401) { USER = null; return viewAuth("Сессия истекла — войди снова."); }
+    box.innerHTML = `<div class="res-msg bad"><pre class="err">${esc(e.message)}</pre></div>`;
+  } finally {
+    buttons.forEach((b) => (b.disabled = false));
+  }
+}
+
+function cell(v) {
+  return v === null || v === undefined ? `<span class="null">NULL</span>` : esc(v);
+}
+
+function tableHtml(columns, rows) {
+  return `
+    <div class="grid-wrap">
+      <table class="grid">
+        <thead><tr>${columns.map((c) => `<th>${esc(c)}</th>`).join("")}</tr></thead>
+        <tbody>${rows.map((r) => `<tr>${r.map((v) => `<td>${cell(v)}</td>`).join("")}</tr>`).join("")}</tbody>
+      </table>
+    </div>`;
+}
+
+function rowsLabel(n) {
+  const m10 = n % 10, m100 = n % 100;
+  const w = m10 === 1 && m100 !== 11 ? "строка" : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? "строки" : "строк";
+  return `${n} ${w}`;
+}
+
+function renderRun(r) {
+  const parts = [];
+  if (r.columns) {
+    parts.push(`<div class="res-meta">${rowsLabel(r.rows.length)}${r.truncated ? " (показаны первые)" : ""} · ${r.ms} мс</div>`);
+    parts.push(r.rows.length ? tableHtml(r.columns, r.rows) : `<div class="res-msg">Запрос выполнен, строк нет.</div>`);
+  } else {
+    const affected = r.rowsAffected != null && r.kind === "sql" ? ` · затронуто: ${rowsLabel(r.rowsAffected)}` : "";
+    parts.push(`<div class="res-msg ok">Выполнено${affected} · ${r.ms} мс</div>`);
+  }
+  if (r.warning) {
+    parts.push(`<div class="res-msg bad"><pre class="err">${esc(r.warning)}${
+      r.compileErrors?.length ? "\n\n" + r.compileErrors.map(esc).join("\n") : ""}</pre></div>`);
+  }
+  if (r.output?.length) {
+    parts.push(`<div class="res-meta">DBMS_OUTPUT</div><pre class="out">${esc(r.output.join("\n"))}</pre>`);
+  }
+  return parts.join("");
+}
+
+function renderCheck(r) {
+  if (r.ok) return `<div class="res-msg ok">✓ ${esc(r.message)} Шаг отмечен пройденным.</div>`;
+  const parts = [`<div class="res-msg bad">${r.error ? `<pre class="err">${esc(r.message)}</pre>` : esc(r.message)}</div>`];
+  if (r.missing?.length) {
+    parts.push(`<div class="res-meta">Этих строк не хватает (показаны до трёх):</div>`);
+    parts.push(tableHtml(r.missing[0].map((_, i) => r.columns?.[i] ?? `#${i + 1}`), r.missing));
+  }
+  if (r.extra?.length) {
+    parts.push(`<div class="res-meta">А эти лишние:</div>`);
+    parts.push(tableHtml(r.columns, r.extra));
+  }
+  return parts.join("");
 }
 
 /* ---------------- экран: тест ---------------- */
@@ -409,7 +563,7 @@ function viewAuth(message, mode = "login") {
     try {
       const me = await api("POST", reg ? "/api/register" : "/api/login", body);
       USER = me;
-      await pullProgress();
+      await Promise.all([pullProgress(), loadSqlStatus()]);
       tabs.hidden = false;
       route();
     } catch (err) {
@@ -466,7 +620,7 @@ async function boot() {
   if (!USER) return viewAuth();
 
   try {
-    await pullProgress();
+    await Promise.all([pullProgress(), loadSqlStatus()]);
   } catch (e) {
     progress = readCache();
     saveState = "offline";

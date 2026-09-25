@@ -22,6 +22,34 @@
 
 Таблицы в базе создаются сами при старте. После регистрации `SIGNUP_CODE` можно удалить — регистрация закроется, вход продолжит работать.
 
+## Выполнение SQL: Oracle Autonomous Database
+
+Редактор на странице шага выполняет запросы в Oracle Autonomous Database (Always Free) через node-oracledb в thin-режиме, по mTLS с wallet. Без этих переменных сайт работает, просто без редактора.
+
+| Переменная | Что это |
+|---|---|
+| `ORACLE_USER` | пользователь базы (у нас `plsql`) |
+| `ORACLE_PASSWORD` | его пароль |
+| `ORACLE_TNS_ALIAS` | имя сервиса из `tnsnames.ora`, например `smqi0y4a3hyldpa0_low` |
+| `ORACLE_WALLET_PASSWORD` | пароль, заданный при скачивании wallet |
+| `ORACLE_WALLET_PEM_B64` | `ewallet.pem` в base64 |
+| `ORACLE_TNSNAMES_B64` | `tnsnames.ora` в base64 |
+
+Два base64-значения удобно положить сразу в буфер обмена (содержимое не появится на экране):
+
+```bash
+cd ~/oracle-wallet/plsqlprep && {
+  echo "ORACLE_WALLET_PEM_B64=$(base64 -i ewallet.pem | tr -d '\n')"
+  echo "ORACLE_TNSNAMES_B64=$(base64 -i tnsnames.ora | tr -d '\n')"
+} | pbcopy
+```
+
+и вставить в Railway → Variables → **Raw Editor**. Wallet никогда не кладётся в репозиторий.
+
+Ограничения: одна команда за запуск (или один PL/SQL-блок), таймаут 20 секунд, до 500 строк в результате, не больше 30 запусков в минуту. Каждая команда коммитится сразу (autocommit).
+
+Автопроверка: у шага в `lessons.json` есть поле `check` с эталонным запросом. Сервер выполняет эталон и запрос ученика и сравнивает строки: число столбцов, число строк и значения (без учёта порядка, если `ordered: false`). Эталон берётся только с сервера.
+
 Проверка живости: `GET /healthz` отвечает `ok`.
 
 ## Локальный запуск
@@ -38,8 +66,9 @@ DATABASE_URL=postgres://postgres:pg@localhost:5432/postgres SIGNUP_CODE=local np
 ## Как устроено
 
 ```
-server.js                      — express: статика, вход, API прогресса
+server.js                      — express: статика, вход, API прогресса и SQL
 db.js                          — подключение к Postgres и создание таблиц
+oracle.js                      — выполнение SQL/PL/SQL в Oracle и автопроверка задач
 public/index.html              — каркас страницы
 public/styles.css              — стили, светлая и тёмная темы
 public/app.js                  — вход, роутер, уроки, тест, схема
