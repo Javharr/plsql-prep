@@ -446,6 +446,230 @@
           }
         }
       ]
+    },
+    {
+      "id": "l03",
+      "num": "03",
+      "title": "Преобразования и условия",
+      "subtitle": "TO_CHAR, TO_DATE, NVL, COALESCE, CASE, DECODE — без них не пишется ни один отчёт",
+      "steps": [
+        {
+          "id": "l03s1",
+          "title": "TO_CHAR для дат — дата в нужном виде",
+          "status": "next",
+          "theory": "<p><code>TO_CHAR(дата, 'маска')</code> превращает дату в строку нужного вида. Основные элементы маски: <code>DD</code> день, <code>MM</code> месяц числом, <code>YYYY</code> год, <code>HH24</code> часы, <code>MI</code> минуты, <code>SS</code> секунды, <code>Month</code> / <code>Mon</code> месяц словом, <code>Day</code> день недели, <code>Q</code> квартал.</p><p><b>Ловушка:</b> <code>Month</code> и <code>Day</code> добиваются пробелами до длины самого длинного названия (<code>September</code> — 9 букв). Отсюда 'March    '. Приставка <code>FM</code> (fill mode) убирает эти пробелы: <code>FMMonth</code>.</p><p>Язык названий берётся из настроек сессии — у нас английский.</p>",
+          "examples": [
+            {
+              "sql": "TO_CHAR(DATE '2024-03-05', 'DD.MM.YYYY')",
+              "out": "05.03.2024"
+            },
+            {
+              "sql": "TO_CHAR(DATE '2024-03-05', 'Month') || '!'",
+              "out": "March    !  — пробелы до 9 символов"
+            },
+            {
+              "sql": "TO_CHAR(DATE '2024-03-05', 'FMMonth') || '!'",
+              "out": "March!"
+            },
+            {
+              "sql": "TO_CHAR(DATE '2024-03-05', 'Q')",
+              "out": "1 — первый квартал"
+            }
+          ],
+          "task": "Выведи order_id, дату заказа в формате ДД.ММ.ГГГГ и название месяца по-английски без лишних пробелов.",
+          "solution": "SELECT order_id,\n       TO_CHAR(order_date, 'DD.MM.YYYY') AS dt,\n       TO_CHAR(order_date, 'FMMonth')    AS month_name\n  FROM orders;",
+          "check": {
+            "sql": "SELECT order_id, TO_CHAR(order_date, 'DD.MM.YYYY'), TO_CHAR(order_date, 'FMMonth') FROM orders",
+            "ordered": false
+          }
+        },
+        {
+          "id": "l03s2",
+          "title": "TO_CHAR для чисел — цены и суммы",
+          "status": "next",
+          "theory": "<p><code>TO_CHAR(число, 'маска')</code>: <code>9</code> — цифра, если есть; <code>0</code> — цифра обязательно (ведущий ноль); <code>,</code> — разделитель тысяч; <code>.</code> — десятичная точка.</p><p><b>Ловушка 1:</b> без <code>FM</code> Oracle оставляет спереди место под знак минуса: <code>TO_CHAR(7, '000')</code> даёт <code>' 007'</code> с пробелом. С <code>FM</code> — <code>'007'</code>.</p><p><b>Ловушка 2:</b> <code>TO_CHAR(0.5, 'FM999.99')</code> даёт <code>'.5'</code> — ноль перед точкой пропал, потому что <code>9</code> не обязан печататься. Нужен <code>0</code> в позиции единиц: <code>'FM990.00'</code> → <code>'0.50'</code>.</p>",
+          "examples": [
+            {
+              "sql": "TO_CHAR(1450, 'FM999,990.00')",
+              "out": "1,450.00"
+            },
+            {
+              "sql": "TO_CHAR(7, '000')",
+              "out": "' 007' — пробел под знак"
+            },
+            {
+              "sql": "TO_CHAR(7, 'FM000')",
+              "out": "007"
+            },
+            {
+              "sql": "TO_CHAR(0.5, 'FM999.99')",
+              "out": ".5 — ноль потерялся"
+            }
+          ],
+          "task": "Выведи prod_name и цену в виде 1,450.00 — с разделителем тысяч, двумя знаками после точки и без пробелов спереди.",
+          "solution": "SELECT prod_name,\n       TO_CHAR(price, 'FM999,990.00') AS price_txt\n  FROM products;",
+          "check": {
+            "sql": "SELECT prod_name, TO_CHAR(price, 'FM999,990.00') FROM products",
+            "ordered": false
+          }
+        },
+        {
+          "id": "l03s3",
+          "title": "TO_DATE — строка в дату",
+          "status": "next",
+          "theory": "<p><code>TO_DATE('строка', 'маска')</code> — обратное действие: разбирает текст по маске и делает <code>DATE</code>. Маска должна точно описывать строку.</p><p>Чем отличается от <code>DATE '2025-01-01'</code>: литерал <code>DATE</code> принимает только формат ГГГГ-ММ-ДД, а <code>TO_DATE</code> — любой, если правильно описать маску. Данные из файлов и форм приходят как раз в «чужих» форматах.</p><p><b>Никогда не пиши <code>TO_DATE</code> без маски:</b> тогда Oracle берёт формат из настроек сессии, и на другом сервере тот же код сломается.</p>",
+          "examples": [
+            {
+              "sql": "TO_DATE('05.03.2024', 'DD.MM.YYYY')",
+              "out": "2024-03-05 00:00:00"
+            },
+            {
+              "sql": "TO_DATE('2024-13-01', 'YYYY-MM-DD')",
+              "out": "ORA-01843: not a valid month"
+            },
+            {
+              "sql": "TO_DATE('05.03.2024 14:30', 'DD.MM.YYYY HH24:MI')",
+              "out": "с временем"
+            }
+          ],
+          "task": "Выведи order_id и order_date заказов, оформленных с 01.03.2024 по 31.05.2024 включительно. Границы задай через TO_DATE из строк в формате ДД.ММ.ГГГГ.",
+          "solution": "SELECT order_id, order_date\n  FROM orders\n WHERE order_date >= TO_DATE('01.03.2024', 'DD.MM.YYYY')\n   AND order_date <  TO_DATE('01.06.2024', 'DD.MM.YYYY');\n-- верхняя граница — начало следующего дня после 31.05,\n-- чтобы не потерять заказы с временем",
+          "check": {
+            "sql": "SELECT order_id, order_date FROM orders WHERE order_date >= TO_DATE('01.03.2024','DD.MM.YYYY') AND order_date < TO_DATE('01.06.2024','DD.MM.YYYY')",
+            "ordered": false
+          }
+        },
+        {
+          "id": "l03s4",
+          "title": "TO_NUMBER и неявное преобразование",
+          "status": "next",
+          "theory": "<p><code>TO_NUMBER('123')</code> — строку в число. Часто Oracle делает это сам: <code>'10' + 5</code> даст <code>15</code>. Это <b>неявное преобразование</b>.</p><p>Опасность в том, что оно ломается на первой же «плохой» строке: <code>'abc' + 5</code> → <code>ORA-01722: invalid number</code>. В проде это классика: столбец VARCHAR2 сравнивают с числом, и запрос падает, когда в данных появляется буква.</p><p>Правило: преобразуй явно, там где это нужно, а не надейся на Oracle.</p>",
+          "examples": [
+            {
+              "sql": "'10' + 5",
+              "out": "15 — неявно"
+            },
+            {
+              "sql": "'abc' + 5",
+              "out": "ORA-01722: invalid number"
+            },
+            {
+              "sql": "TO_NUMBER(SUBSTR('+998901112233', -4))",
+              "out": "2233"
+            }
+          ],
+          "task": "Выведи emp_id и последние 4 цифры телефона числом — для сотрудников, у которых телефон есть.",
+          "solution": "SELECT emp_id,\n       TO_NUMBER(SUBSTR(phone, -4)) AS last4\n  FROM employees\n WHERE phone IS NOT NULL;",
+          "check": {
+            "sql": "SELECT emp_id, TO_NUMBER(SUBSTR(phone, -4)) FROM employees WHERE phone IS NOT NULL",
+            "ordered": false
+          }
+        },
+        {
+          "id": "l03s5",
+          "title": "NVL и NVL2",
+          "status": "next",
+          "theory": "<p><code>NVL(x, замена)</code> — если <code>x</code> равно NULL, вернуть замену.</p><p><code>NVL2(x, если_не_null, если_null)</code> — выбрать одно из двух значений в зависимости от того, пустой <code>x</code> или нет. Обрати внимание на порядок: сначала «не NULL», потом «NULL».</p><p><b>Ловушка:</b> у <code>NVL</code> оба аргумента должны быть одного типа. <code>NVL(commission_pct, 'нет')</code> упадёт с <code>ORA-01722</code>: Oracle пытается превратить 'нет' в число, потому что первый аргумент — NUMBER.</p>",
+          "examples": [
+            {
+              "sql": "NVL(commission_pct, 0)",
+              "out": "0 вместо NULL"
+            },
+            {
+              "sql": "NVL2(commission_pct, 'есть', 'нет')",
+              "out": "'есть' или 'нет'"
+            },
+            {
+              "sql": "NVL(commission_pct, 'нет')",
+              "out": "ORA-01722: invalid number"
+            }
+          ],
+          "task": "Выведи emp_id, last_name и текст «есть комиссия» или «нет комиссии».",
+          "solution": "SELECT emp_id,\n       last_name,\n       NVL2(commission_pct, 'есть комиссия', 'нет комиссии') AS commission\n  FROM employees;",
+          "check": {
+            "sql": "SELECT emp_id, last_name, NVL2(commission_pct, 'есть комиссия', 'нет комиссии') FROM employees",
+            "ordered": false
+          }
+        },
+        {
+          "id": "l03s6",
+          "title": "COALESCE и NULLIF",
+          "status": "next",
+          "theory": "<p><code>COALESCE(a, b, c, ...)</code> — первое не-NULL значение из списка. Это стандарт SQL, работает везде, в отличие от <code>NVL</code>, который есть только в Oracle. И аргументов может быть сколько угодно.</p><p><code>NULLIF(a, b)</code> — вернёт NULL, если <code>a = b</code>, иначе <code>a</code>. Главное применение — защита от деления на ноль: <code>x / NULLIF(y, 0)</code> вместо ошибки <code>ORA-01476</code> даёт NULL.</p><p>На собеседовании спрашивают разницу NVL и COALESCE: NVL всегда вычисляет оба аргумента, COALESCE останавливается на первом не-NULL.</p>",
+          "examples": [
+            {
+              "sql": "COALESCE(NULL, NULL, 'c', 'd')",
+              "out": "c"
+            },
+            {
+              "sql": "NULLIF(5, 5)",
+              "out": "NULL"
+            },
+            {
+              "sql": "price / in_stock  -- для UPS",
+              "out": "ORA-01476: divisor is equal to zero"
+            },
+            {
+              "sql": "price / NULLIF(in_stock, 0)",
+              "out": "NULL вместо ошибки"
+            }
+          ],
+          "task": "Выведи cust_name и контакт клиента: email, а если его нет — город.",
+          "solution": "SELECT cust_name,\n       COALESCE(email, city) AS contact\n  FROM customers;",
+          "check": {
+            "sql": "SELECT cust_name, COALESCE(email, city) FROM customers",
+            "ordered": false
+          }
+        },
+        {
+          "id": "l03s7",
+          "title": "CASE — условие внутри запроса",
+          "status": "next",
+          "theory": "<p><code>CASE WHEN условие THEN значение ... ELSE значение END</code> — «если-то» прямо в SELECT.</p><p><b>Ветки проверяются сверху вниз, срабатывает первая истинная.</b> Поэтому порядок важен: если сначала написать <code>salary &gt;= 2500</code>, а потом <code>salary &gt;= 5000</code>, зарплата 12000 попадёт в первую ветку.</p><p>Если ни одна ветка не подошла и <code>ELSE</code> нет — результат NULL.</p>",
+          "examples": [
+            {
+              "sql": "CASE WHEN salary >= 5000 THEN 'high'\n     WHEN salary >= 2500 THEN 'mid'\n     ELSE 'low' END",
+              "out": "12000 → high, 3200 → mid, 1900 → low"
+            },
+            {
+              "sql": "CASE WHEN salary > 100000 THEN 'x' END",
+              "out": "NULL — нет ELSE"
+            }
+          ],
+          "task": "Выведи emp_id, salary и уровень зарплаты: «высокая» от 5000, «средняя» от 2500, иначе «низкая».",
+          "solution": "SELECT emp_id,\n       salary,\n       CASE\n         WHEN salary >= 5000 THEN 'высокая'\n         WHEN salary >= 2500 THEN 'средняя'\n         ELSE 'низкая'\n       END AS grade\n  FROM employees;",
+          "check": {
+            "sql": "SELECT emp_id, salary, CASE WHEN salary >= 5000 THEN 'высокая' WHEN salary >= 2500 THEN 'средняя' ELSE 'низкая' END FROM employees",
+            "ordered": false
+          }
+        },
+        {
+          "id": "l03s8",
+          "title": "Простой CASE и DECODE",
+          "status": "next",
+          "theory": "<p>Когда сравниваешь одно значение с набором вариантов, есть короткая запись: <code>CASE status WHEN 'NEW' THEN 'Новый' WHEN 'PAID' THEN 'Оплачен' END</code>.</p><p><code>DECODE(выражение, вариант1, результат1, вариант2, результат2, ..., по_умолчанию)</code> — то же самое, но Oracle-only и старше. В легаси-коде его очень много.</p><p><b>Вопрос с собеседования:</b> <code>DECODE</code> считает NULL равным NULL, а <code>CASE</code> — нет. <code>DECODE(NULL, NULL, 'да', 'нет')</code> → 'да', а <code>CASE NULL WHEN NULL THEN 'да' ELSE 'нет' END</code> → 'нет'.</p>",
+          "examples": [
+            {
+              "sql": "DECODE(status, 'NEW', 'Новый', 'PAID', 'Оплачен', 'Другое')",
+              "out": "перевод статуса"
+            },
+            {
+              "sql": "DECODE(NULL, NULL, 'да', 'нет')",
+              "out": "да"
+            },
+            {
+              "sql": "CASE NULL WHEN NULL THEN 'да' ELSE 'нет' END",
+              "out": "нет"
+            }
+          ],
+          "task": "Выведи order_id и статус по-русски: NEW → Новый, PAID → Оплачен, SHIPPED → Отправлен, CANCELLED → Отменён. Можно через DECODE или простой CASE.",
+          "solution": "SELECT order_id,\n       DECODE(status, 'NEW',       'Новый',\n                      'PAID',      'Оплачен',\n                      'SHIPPED',   'Отправлен',\n                      'CANCELLED', 'Отменён') AS status_ru\n  FROM orders;",
+          "check": {
+            "sql": "SELECT order_id, DECODE(status,'NEW','Новый','PAID','Оплачен','SHIPPED','Отправлен','CANCELLED','Отменён') FROM orders",
+            "ordered": false
+          }
+        }
+      ]
     }
   ]
 }
