@@ -70,8 +70,8 @@ server.js                      — express: статика, вход, API про
 db.js                          — подключение к Postgres и создание таблиц
 oracle.js                      — выполнение SQL/PL/SQL в Oracle и автопроверка задач
 public/index.html              — каркас страницы
-public/styles.css              — стили, светлая и тёмная темы
-public/app.js                  — вход, роутер, уроки, тест, схема
+public/css/app.css             — стили: тёмная тема по умолчанию, светлая по настройке системы
+public/js/app.js               — вход, главная, шаги (теория слева, редактор справа), консоль, тест, схема
 public/content/lessons.json    — уроки и шаги: теория, примеры, задачи, решения
 public/content/questions.json  — банк вопросов для теста
 ```
@@ -85,6 +85,12 @@ API:
 | POST | `/api/logout` | выход |
 | GET | `/api/me` | кто вошёл |
 | GET / PUT | `/api/progress` | прочитать / сохранить прогресс |
+| GET | `/api/sql/status` | подключена ли Oracle |
+| GET | `/api/sql/schema` | таблицы и столбцы схемы — для боковой панели консоли |
+| POST | `/api/sql/run` | выполнить запрос или PL/SQL-блок |
+| POST | `/api/sql/check` | проверить решение шага по эталону |
+
+Редактор — CodeMirror 5 (режим `text/x-plsql`), отдаётся с этого же сервера из `node_modules` по адресу `/vendor/codemirror`.
 
 Безопасность: пароли хранятся как bcrypt-хэш; сессия — случайный токен в httpOnly-куке, в базе лежит только его SHA-256; запись в API принимается только как JSON, что вместе с `SameSite=Lax` закрывает CSRF.
 

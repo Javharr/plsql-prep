@@ -5,7 +5,7 @@ import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import bcrypt from "bcryptjs";
 import { pool, migrate } from "./db.js";
-import { oracleEnabled, run as runSql, check as checkSql } from "./oracle.js";
+import { oracleEnabled, run as runSql, check as checkSql, schema as sqlSchema } from "./oracle.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -35,6 +35,9 @@ app.use(
     },
   })
 );
+
+// редактор кода отдаём со своего сервера, без внешних CDN
+app.use("/vendor/codemirror", express.static(path.join(__dirname, "node_modules", "codemirror"), { maxAge: "7d" }));
 
 app.get("/healthz", (_req, res) => res.type("text").send("ok"));
 
@@ -248,6 +251,11 @@ function tooManyRuns(userId) {
 api.get("/sql/status", wrap(requireUser), (_req, res) => {
   res.json({ enabled: oracleEnabled });
 });
+
+api.get("/sql/schema", wrap(requireUser), wrap(async (_req, res) => {
+  if (!oracleEnabled) return res.status(503).json({ error: "Oracle пока не подключена к сайту." });
+  res.json({ tables: await sqlSchema() });
+}));
 
 api.post("/sql/run", wrap(requireUser), wrap(async (req, res) => {
   if (!oracleEnabled) return res.status(503).json({ error: "Oracle пока не подключена к сайту." });

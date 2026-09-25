@@ -236,6 +236,37 @@ export async function run(raw) {
   }
 }
 
+/* ---------------- список таблиц для консоли ---------------- */
+
+export async function schema() {
+  const pool = await getPool();
+  const conn = await pool.getConnection();
+  conn.callTimeout = CALL_TIMEOUT_MS;
+  try {
+    const r = await conn.execute(
+      `SELECT c.table_name, c.column_name, c.data_type, c.data_length,
+              c.data_precision, c.data_scale, c.nullable
+         FROM user_tab_columns c
+         JOIN user_tables t ON t.table_name = c.table_name
+        WHERE c.table_name NOT LIKE '%$%'
+        ORDER BY c.table_name, c.column_id`,
+      [],
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    const tables = new Map();
+    for (const c of r.rows) {
+      let type = c.DATA_TYPE;
+      if (type === "NUMBER" && c.DATA_PRECISION) type += `(${c.DATA_PRECISION}${c.DATA_SCALE && c.DATA_SCALE !== "0" ? "," + c.DATA_SCALE : ""})`;
+      else if (/CHAR/.test(type)) type += `(${c.DATA_LENGTH})`;
+      if (!tables.has(c.TABLE_NAME)) tables.set(c.TABLE_NAME, []);
+      tables.get(c.TABLE_NAME).push({ name: c.COLUMN_NAME, type, nullable: c.NULLABLE === "Y" });
+    }
+    return [...tables].map(([name, columns]) => ({ name, columns }));
+  } finally {
+    await conn.close().catch(() => {});
+  }
+}
+
 /* ---------------- проверка задач ---------------- */
 
 function plural(n, one, few, many) {
