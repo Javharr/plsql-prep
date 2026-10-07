@@ -1,0 +1,1070 @@
+[
+ {
+  "id": "substr",
+  "cat": "Строки",
+  "name": "SUBSTR",
+  "sig": "SUBSTR(строка, позиция [, длина])",
+  "desc": "Кусок строки. Позиции считаются с 1. Отрицательная позиция — отсчёт с конца.",
+  "ex": "SELECT SUBSTR('Oracle SQL', 1, 6) AS a,\n       SUBSTR('Oracle SQL', -3)   AS b\n  FROM dual;",
+  "out": "a = Oracle, b = SQL",
+  "trap": "Позиция 0 работает как 1. Без длины — до конца строки.",
+  "run": true
+ },
+ {
+  "id": "instr",
+  "cat": "Строки",
+  "name": "INSTR",
+  "sig": "INSTR(строка, что [, с_позиции [, какое_вхождение]])",
+  "desc": "Позиция подстроки. Не нашёл — <code>0</code>. Отрицательная стартовая позиция ищет с конца.",
+  "ex": "SELECT email, INSTR(email, '@') AS at_pos\n  FROM customers;",
+  "out": "info@alfa.uz → 5; у NULL-email → NULL",
+  "trap": "Если сама строка NULL — результат NULL, а не 0.",
+  "run": true
+ },
+ {
+  "id": "length",
+  "cat": "Строки",
+  "name": "LENGTH",
+  "sig": "LENGTH(строка)",
+  "desc": "Число символов.",
+  "ex": "SELECT first_name, LENGTH(first_name) AS len\n  FROM employees;",
+  "out": "Alisher → 7",
+  "trap": "В Oracle пустая строка '' — это NULL, поэтому LENGTH('') = NULL, а не 0.",
+  "run": true
+ },
+ {
+  "id": "upper-lower-initcap",
+  "cat": "Строки",
+  "name": "UPPER / LOWER / INITCAP",
+  "sig": "UPPER(s) · LOWER(s) · INITCAP(s)",
+  "desc": "Регистр: всё большими, всё маленькими, каждое слово с большой.",
+  "ex": "SELECT INITCAP('hello tashkent') FROM dual;",
+  "out": "Hello Tashkent",
+  "trap": "Сравнение строк в Oracle регистрозависимо: для поиска без регистра — <code>UPPER(col) = UPPER(:x)</code>.",
+  "run": true
+ },
+ {
+  "id": "concat",
+  "cat": "Строки",
+  "name": "|| и CONCAT",
+  "sig": "a || b · CONCAT(a, b)",
+  "desc": "Склейка строк. <code>CONCAT</code> принимает ровно два аргумента, <code>||</code> — сколько угодно.",
+  "ex": "SELECT first_name || ' ' || last_name AS full_name\n  FROM employees;",
+  "out": "Alisher Karimov",
+  "trap": "NULL при склейке ведёт себя как пустая строка: 'a' || NULL = 'a' (в отличие от стандарта SQL).",
+  "run": true
+ },
+ {
+  "id": "replace",
+  "cat": "Строки",
+  "name": "REPLACE",
+  "sig": "REPLACE(строка, что [, на_что])",
+  "desc": "Заменяет все вхождения подстроки. Без третьего аргумента — удаляет.",
+  "ex": "SELECT REPLACE('2026-10-07', '-', '.') FROM dual;",
+  "out": "2026.10.07",
+  "run": true
+ },
+ {
+  "id": "translate",
+  "cat": "Строки",
+  "name": "TRANSLATE",
+  "sig": "TRANSLATE(строка, из_символов, в_символы)",
+  "desc": "Посимвольная замена: i-й символ второго аргумента меняется на i-й символ третьего.",
+  "ex": "SELECT TRANSLATE('a-b_c', '-_', '  ') FROM dual;",
+  "out": "a b c",
+  "trap": "Символы, которым не нашлось пары в третьем аргументе, удаляются.",
+  "run": true
+ },
+ {
+  "id": "trim-ltrim-rtrim",
+  "cat": "Строки",
+  "name": "TRIM / LTRIM / RTRIM",
+  "sig": "TRIM([LEADING|TRAILING|BOTH] 'c' FROM s) · LTRIM(s, набор)",
+  "desc": "Срезает пробелы (или заданные символы) по краям.",
+  "ex": "SELECT TRIM('  hi  ') AS a,\n       TRIM(LEADING '0' FROM '00123') AS b,\n       LTRIM('xxyhi', 'xy') AS c\n  FROM dual;",
+  "out": "a = hi, b = 123, c = hi",
+  "trap": "TRIM срезает один символ, LTRIM/RTRIM — любой символ из набора.",
+  "run": true
+ },
+ {
+  "id": "lpad-rpad",
+  "cat": "Строки",
+  "name": "LPAD / RPAD",
+  "sig": "LPAD(s, длина [, чем])",
+  "desc": "Дополняет строку слева/справа до нужной длины.",
+  "ex": "SELECT LPAD('7', 3, '0') FROM dual;",
+  "out": "007",
+  "trap": "Если строка длиннее — она обрезается: LPAD('12345', 3) = '123'.",
+  "run": true
+ },
+ {
+  "id": "regexp-like",
+  "cat": "Строки",
+  "name": "REGEXP_LIKE",
+  "sig": "REGEXP_LIKE(s, шаблон [, флаги])",
+  "desc": "Условие «строка подходит под регулярное выражение». Флаг <code>'i'</code> — без учёта регистра.",
+  "ex": "SELECT cust_name, email\n  FROM customers\n WHERE REGEXP_LIKE(email, '\\.uz$');",
+  "out": "клиенты с почтой в .uz",
+  "run": true
+ },
+ {
+  "id": "regexp-substr-replace-count",
+  "cat": "Строки",
+  "name": "REGEXP_SUBSTR / REPLACE / COUNT",
+  "sig": "REGEXP_SUBSTR(s, шаблон [, поз, вхожд])",
+  "desc": "Вытащить, заменить или посчитать совпадения с регулярным выражением.",
+  "ex": "SELECT REGEXP_SUBSTR('tel: +998 90 123', '[0-9]+')     AS first_num,\n       REGEXP_REPLACE('a1b22c', '[0-9]', '')         AS letters,\n       REGEXP_COUNT('banana', 'a')                    AS cnt\n  FROM dual;",
+  "out": "998 · abc · 3",
+  "run": true
+ },
+ {
+  "id": "chr-ascii",
+  "cat": "Строки",
+  "name": "CHR / ASCII",
+  "sig": "CHR(код) · ASCII(символ)",
+  "desc": "Символ по коду и обратно. <code>CHR(10)</code> — перевод строки.",
+  "ex": "SELECT CHR(65) AS c, ASCII('A') AS n FROM dual;",
+  "out": "A · 65",
+  "run": true
+ },
+ {
+  "id": "round",
+  "cat": "Числа",
+  "name": "ROUND (число)",
+  "sig": "ROUND(n [, знаков])",
+  "desc": "Математическое округление. Отрицательное число знаков — до десятков, сотен…",
+  "ex": "SELECT ROUND(1234.567, 2) AS a, ROUND(1234.567, -2) AS b FROM dual;",
+  "out": "1234.57 · 1200",
+  "run": true
+ },
+ {
+  "id": "trunc",
+  "cat": "Числа",
+  "name": "TRUNC (число)",
+  "sig": "TRUNC(n [, знаков])",
+  "desc": "Отбрасывает лишние знаки без округления.",
+  "ex": "SELECT TRUNC(1234.567, 1) AS a, TRUNC(-4.9) AS b FROM dual;",
+  "out": "1234.5 · -4",
+  "run": true
+ },
+ {
+  "id": "ceil-floor",
+  "cat": "Числа",
+  "name": "CEIL / FLOOR",
+  "sig": "CEIL(n) · FLOOR(n)",
+  "desc": "Вверх до целого / вниз до целого.",
+  "ex": "SELECT CEIL(4.1) AS a, FLOOR(-4.1) AS b FROM dual;",
+  "out": "5 · -5",
+  "trap": "Для отрицательных FLOOR уходит «дальше от нуля», а TRUNC — к нулю.",
+  "run": true
+ },
+ {
+  "id": "mod",
+  "cat": "Числа",
+  "name": "MOD",
+  "sig": "MOD(a, b)",
+  "desc": "Остаток от деления. Удобно для чётности: <code>MOD(n, 2) = 0</code>.",
+  "ex": "SELECT MOD(17, 5) FROM dual;",
+  "out": "2",
+  "trap": "MOD(x, 0) возвращает x — ошибки деления на ноль нет.",
+  "run": true
+ },
+ {
+  "id": "abs-sign-power-sqrt",
+  "cat": "Числа",
+  "name": "ABS / SIGN / POWER / SQRT",
+  "sig": "ABS(n) · SIGN(n) · POWER(a, b) · SQRT(n)",
+  "desc": "Модуль, знак (-1, 0, 1), степень, корень.",
+  "ex": "SELECT POWER(2, 10) AS p, SQRT(144) AS s FROM dual;",
+  "out": "1024 · 12",
+  "run": true
+ },
+ {
+  "id": "greatest-least",
+  "cat": "Числа",
+  "name": "GREATEST / LEAST",
+  "sig": "GREATEST(a, b, …) · LEAST(a, b, …)",
+  "desc": "Максимум и минимум из списка значений в одной строке (не агрегат).",
+  "ex": "SELECT GREATEST(3, 7, 5) AS g, LEAST(3, 7, 5) AS l FROM dual;",
+  "out": "7 · 3",
+  "trap": "Если хоть один аргумент NULL — результат NULL.",
+  "run": true
+ },
+ {
+  "id": "sysdate-systimestamp",
+  "cat": "Даты",
+  "name": "SYSDATE / SYSTIMESTAMP",
+  "sig": "SYSDATE · SYSTIMESTAMP · CURRENT_DATE",
+  "desc": "Текущие дата-время сервера БД. <code>CURRENT_DATE</code> — во временной зоне сессии.",
+  "ex": "SELECT SYSDATE, SYSTIMESTAMP FROM dual;",
+  "out": "2026-10-07 14:03:11 …",
+  "trap": "Тип DATE в Oracle всегда хранит и время. «Сегодня» без времени — TRUNC(SYSDATE).",
+  "run": true
+ },
+ {
+  "id": "c19",
+  "cat": "Даты",
+  "name": "Литералы дат",
+  "sig": "DATE 'YYYY-MM-DD' · TIMESTAMP 'YYYY-MM-DD HH24:MI:SS'",
+  "desc": "Надёжный способ записать дату в запросе: не зависит от настроек сессии.",
+  "ex": "SELECT first_name, hire_date\n  FROM employees\n WHERE hire_date >= DATE '2022-01-01';",
+  "run": true
+ },
+ {
+  "id": "c20",
+  "cat": "Даты",
+  "name": "Арифметика дат",
+  "sig": "дата ± дни · дата − дата",
+  "desc": "Прибавить число = прибавить дни (дробь — часть дня). Разница двух дат — число дней.",
+  "ex": "SELECT SYSDATE + 1        AS tomorrow,\n       SYSDATE + 1/24     AS in_hour,\n       TRUNC(SYSDATE - DATE '2026-01-01') AS days_this_year\n  FROM dual;",
+  "trap": "Разница дат — NUMBER с дробной частью, отсюда TRUNC.",
+  "run": true
+ },
+ {
+  "id": "trunc-2",
+  "cat": "Даты",
+  "name": "TRUNC (дата)",
+  "sig": "TRUNC(дата [, 'MM' | 'YYYY' | 'IW' | 'Q'])",
+  "desc": "Обрезает до начала дня (по умолчанию), месяца, года, ISO-недели (понедельник), квартала.",
+  "ex": "SELECT TRUNC(SYSDATE) AS today, TRUNC(SYSDATE, 'MM') AS month_start FROM dual;",
+  "trap": "<code>WHERE TRUNC(hire_date) = DATE '…'</code> мешает индексу. Лучше диапазон: <code>hire_date >= d AND hire_date < d + 1</code>.",
+  "run": true
+ },
+ {
+  "id": "add-months",
+  "cat": "Даты",
+  "name": "ADD_MONTHS",
+  "sig": "ADD_MONTHS(дата, n)",
+  "desc": "Сдвиг на n месяцев (n может быть отрицательным).",
+  "ex": "SELECT ADD_MONTHS(DATE '2026-01-31', 1) FROM dual;",
+  "out": "2026-02-28",
+  "trap": "Из последнего дня месяца попадаешь в последний день нового месяца.",
+  "run": true
+ },
+ {
+  "id": "months-between",
+  "cat": "Даты",
+  "name": "MONTHS_BETWEEN",
+  "sig": "MONTHS_BETWEEN(дата1, дата2)",
+  "desc": "Сколько месяцев от дата2 до дата1. Может быть дробным.",
+  "ex": "SELECT first_name, TRUNC(MONTHS_BETWEEN(SYSDATE, hire_date) / 12) AS years\n  FROM employees;",
+  "out": "стаж в полных годах",
+  "trap": "Порядок аргументов важен: большая дата первой, иначе минус.",
+  "run": true
+ },
+ {
+  "id": "last-day-next-day",
+  "cat": "Даты",
+  "name": "LAST_DAY / NEXT_DAY",
+  "sig": "LAST_DAY(дата) · NEXT_DAY(дата, 'MONDAY')",
+  "desc": "Последний день месяца; ближайший указанный день недели после даты.",
+  "ex": "SELECT LAST_DAY(DATE '2026-02-10') FROM dual;",
+  "out": "2026-02-28",
+  "trap": "Название дня в NEXT_DAY зависит от языка сессии (у нас английский).",
+  "run": true
+ },
+ {
+  "id": "extract",
+  "cat": "Даты",
+  "name": "EXTRACT",
+  "sig": "EXTRACT(YEAR | MONTH | DAY FROM дата)",
+  "desc": "Достаёт часть даты числом.",
+  "ex": "SELECT EXTRACT(MONTH FROM DATE '2026-10-07') FROM dual;",
+  "out": "10",
+  "trap": "HOUR/MINUTE/SECOND работают только с TIMESTAMP: <code>EXTRACT(HOUR FROM SYSTIMESTAMP)</code>.",
+  "run": true
+ },
+ {
+  "id": "interval",
+  "cat": "Даты",
+  "name": "INTERVAL",
+  "sig": "INTERVAL '2' HOUR · NUMTODSINTERVAL(n, 'MINUTE')",
+  "desc": "Промежутки времени для TIMESTAMP-арифметики.",
+  "ex": "SELECT SYSTIMESTAMP + INTERVAL '90' MINUTE FROM dual;",
+  "run": true
+ },
+ {
+  "id": "to-char",
+  "cat": "Преобразования",
+  "name": "TO_CHAR (дата)",
+  "sig": "TO_CHAR(дата, 'формат')",
+  "desc": "Дата → строка. Форматы: <code>YYYY MM DD HH24 MI SS</code>, <code>Month Mon Day DY Q IW</code>. <code>FM</code> убирает пробелы-заполнители.",
+  "ex": "SELECT TO_CHAR(hire_date, 'DD.MM.YYYY')   AS d,\n       TO_CHAR(hire_date, 'FMMonth YYYY') AS m\n  FROM employees;",
+  "out": "15.03.2021 · March 2021",
+  "trap": "MM — месяц, MI — минуты. Перепутать — классика.",
+  "run": true
+ },
+ {
+  "id": "to-char-2",
+  "cat": "Преобразования",
+  "name": "TO_CHAR (число)",
+  "sig": "TO_CHAR(число, 'FM9G999D00')",
+  "desc": "Число → строка по формату: <code>9</code> цифра, <code>0</code> обязательная цифра, <code>G</code> разделитель групп, <code>D</code> дробный разделитель.",
+  "ex": "SELECT TO_CHAR(1234.5, 'FM9G999D00') FROM dual;",
+  "out": "1,234.50",
+  "trap": "Если число не влезает в формат — получишь ####.",
+  "run": true
+ },
+ {
+  "id": "to-date",
+  "cat": "Преобразования",
+  "name": "TO_DATE",
+  "sig": "TO_DATE(строка, 'формат')",
+  "desc": "Строка → дата по явному формату.",
+  "ex": "SELECT TO_DATE('07.10.2026 18:30', 'DD.MM.YYYY HH24:MI') FROM dual;",
+  "trap": "Без формата берётся NLS_DATE_FORMAT сессии — на другом сервере код сломается.",
+  "run": true
+ },
+ {
+  "id": "to-number",
+  "cat": "Преобразования",
+  "name": "TO_NUMBER",
+  "sig": "TO_NUMBER(строка [DEFAULT x ON CONVERSION ERROR])",
+  "desc": "Строка → число. С 12.2 можно задать значение при ошибке.",
+  "ex": "SELECT TO_NUMBER('42') AS a,\n       TO_NUMBER('abc' DEFAULT 0 ON CONVERSION ERROR) AS b\n  FROM dual;",
+  "out": "42 · 0",
+  "trap": "Без DEFAULT кривая строка даёт ORA-01722: invalid number.",
+  "run": true
+ },
+ {
+  "id": "cast",
+  "cat": "Преобразования",
+  "name": "CAST",
+  "sig": "CAST(выражение AS тип)",
+  "desc": "Стандартное SQL-преобразование типа.",
+  "ex": "SELECT CAST('123' AS NUMBER) + 1 FROM dual;",
+  "out": "124",
+  "run": true
+ },
+ {
+  "id": "c32",
+  "cat": "Преобразования",
+  "name": "Неявное преобразование",
+  "sig": "WHERE varchar_col = 123",
+  "desc": "Oracle сам приводит типы, причём число сильнее строки: колонку обернёт в TO_NUMBER.",
+  "trap": "Индекс по колонке не используется, а одна «не-цифра» в данных — ORA-01722. Сравнивай с тем же типом."
+ },
+ {
+  "id": "is-null",
+  "cat": "NULL и условия",
+  "name": "IS NULL",
+  "sig": "col IS NULL · col IS NOT NULL",
+  "desc": "Единственный способ проверить NULL. Любое сравнение с NULL даёт UNKNOWN.",
+  "ex": "SELECT first_name FROM employees WHERE dept_id IS NULL;",
+  "out": "сотрудник 152",
+  "trap": "<code>= NULL</code> и <code>!= NULL</code> не вернут ни одной строки.",
+  "run": true
+ },
+ {
+  "id": "nvl",
+  "cat": "NULL и условия",
+  "name": "NVL",
+  "sig": "NVL(значение, замена)",
+  "desc": "Подставляет замену вместо NULL.",
+  "ex": "SELECT first_name, NVL(commission_pct, 0) AS comm FROM employees;",
+  "trap": "Оба аргумента вычисляются всегда; тип результата — тип первого аргумента.",
+  "run": true
+ },
+ {
+  "id": "nvl2",
+  "cat": "NULL и условия",
+  "name": "NVL2",
+  "sig": "NVL2(значение, если_не_null, если_null)",
+  "desc": "Ветвление по NULL в одну функцию.",
+  "ex": "SELECT first_name, NVL2(commission_pct, 'есть', 'нет') AS has_comm FROM employees;",
+  "run": true
+ },
+ {
+  "id": "coalesce",
+  "cat": "NULL и условия",
+  "name": "COALESCE",
+  "sig": "COALESCE(a, b, c, …)",
+  "desc": "Первое не-NULL значение из списка. Стандарт SQL, вычисляет лениво.",
+  "ex": "SELECT cust_name, COALESCE(email, city, 'нет данных') AS contact FROM customers;",
+  "run": true
+ },
+ {
+  "id": "nullif",
+  "cat": "NULL и условия",
+  "name": "NULLIF",
+  "sig": "NULLIF(a, b)",
+  "desc": "NULL, если a = b, иначе a. Классика — защита от деления на ноль.",
+  "ex": "SELECT 100 / NULLIF(0, 0) FROM dual;",
+  "out": "NULL вместо ORA-01476",
+  "run": true
+ },
+ {
+  "id": "case",
+  "cat": "NULL и условия",
+  "name": "CASE",
+  "sig": "CASE WHEN условие THEN … [ELSE …] END",
+  "desc": "Условное выражение. Простая форма: <code>CASE x WHEN 1 THEN … END</code>.",
+  "ex": "SELECT first_name, salary,\n       CASE WHEN salary >= 10000 THEN 'high'\n            WHEN salary >= 5000  THEN 'mid'\n            ELSE 'low' END AS band\n  FROM employees;",
+  "trap": "Без ELSE несовпавшие получат NULL. <code>CASE x WHEN NULL</code> никогда не сработает.",
+  "run": true
+ },
+ {
+  "id": "decode",
+  "cat": "NULL и условия",
+  "name": "DECODE",
+  "sig": "DECODE(x, v1, r1, v2, r2, …, по_умолчанию)",
+  "desc": "Oracle-аналог простого CASE.",
+  "ex": "SELECT status, DECODE(status, 'NEW', 'Новый', 'PAID', 'Оплачен', 'Другое') AS ru\n  FROM orders;",
+  "trap": "В отличие от CASE, DECODE считает NULL равным NULL: DECODE(NULL, NULL, 'да') = 'да'.",
+  "run": true
+ },
+ {
+  "id": "in-between-like",
+  "cat": "NULL и условия",
+  "name": "IN / BETWEEN / LIKE",
+  "sig": "x IN (…) · x BETWEEN a AND b · x LIKE 'A%'",
+  "desc": "<code>BETWEEN</code> включает обе границы. В LIKE: <code>%</code> — любые символы, <code>_</code> — ровно один.",
+  "ex": "SELECT prod_name, price FROM products WHERE price BETWEEN 100 AND 500;",
+  "trap": "<code>NOT IN (…, NULL)</code> не вернёт ни одной строки.",
+  "run": true
+ },
+ {
+  "id": "and-or",
+  "cat": "NULL и условия",
+  "name": "Приоритет AND / OR",
+  "sig": "a OR b AND c = a OR (b AND c)",
+  "desc": "AND связывает сильнее OR. Ставь скобки всегда, когда смешиваешь.",
+  "ex": "SELECT * FROM products\n WHERE (category = 'Hardware' AND price > 1000)\n    OR in_stock = 0;",
+  "run": true
+ },
+ {
+  "id": "order-by",
+  "cat": "Сортировка и выборка",
+  "name": "ORDER BY",
+  "sig": "ORDER BY col [ASC|DESC] [NULLS FIRST|LAST]",
+  "desc": "Сортировка. Можно по алиасу и по номеру столбца.",
+  "ex": "SELECT first_name, commission_pct\n  FROM employees\n ORDER BY commission_pct DESC NULLS LAST;",
+  "trap": "По умолчанию NULL считается самым большим: при ASC — в конце, при DESC — в начале.",
+  "run": true
+ },
+ {
+  "id": "distinct",
+  "cat": "Сортировка и выборка",
+  "name": "DISTINCT",
+  "sig": "SELECT DISTINCT col1, col2",
+  "desc": "Убирает дубли по всей комбинации выбранных столбцов.",
+  "ex": "SELECT DISTINCT category FROM products;",
+  "trap": "DISTINCT — не функция: <code>DISTINCT(a), b</code> всё равно уникализирует пару (a, b).",
+  "run": true
+ },
+ {
+  "id": "fetch-first-offset",
+  "cat": "Сортировка и выборка",
+  "name": "FETCH FIRST / OFFSET",
+  "sig": "OFFSET n ROWS FETCH FIRST m ROWS ONLY | WITH TIES",
+  "desc": "Ограничение строк (12c+). <code>WITH TIES</code> добавит строки с тем же значением сортировки.",
+  "ex": "SELECT first_name, salary\n  FROM employees\n ORDER BY salary DESC\n FETCH FIRST 3 ROWS WITH TIES;",
+  "run": true
+ },
+ {
+  "id": "rownum",
+  "cat": "Сортировка и выборка",
+  "name": "ROWNUM",
+  "sig": "WHERE ROWNUM <= n",
+  "desc": "Номер строки, выдаётся по мере отбора — до ORDER BY.",
+  "ex": "SELECT *\n  FROM (SELECT first_name, salary FROM employees ORDER BY salary DESC)\n WHERE ROWNUM <= 3;",
+  "out": "топ-3 по зарплате",
+  "trap": "<code>WHERE ROWNUM = 2</code> или <code>> 1</code> — пусто. ORDER BY в том же запросе сортирует уже отобранные строки.",
+  "run": true
+ },
+ {
+  "id": "rowid",
+  "cat": "Сортировка и выборка",
+  "name": "ROWID",
+  "sig": "ROWID",
+  "desc": "Физический адрес строки. Самый быстрый доступ; пригодится для удаления дублей.",
+  "ex": "SELECT ROWID, first_name FROM employees FETCH FIRST 3 ROWS ONLY;",
+  "trap": "Может измениться после перемещения строки (ALTER TABLE MOVE, экспорт/импорт) — не храни его.",
+  "run": true
+ },
+ {
+  "id": "dual",
+  "cat": "Сортировка и выборка",
+  "name": "DUAL",
+  "sig": "SELECT … FROM dual",
+  "desc": "Служебная таблица из одной строки — для вычислений без таблицы. В 23ai FROM можно опустить.",
+  "ex": "SELECT 2 + 2 FROM dual;",
+  "out": "4",
+  "run": true
+ },
+ {
+  "id": "count",
+  "cat": "Группировка",
+  "name": "COUNT",
+  "sig": "COUNT(*) · COUNT(col) · COUNT(DISTINCT col)",
+  "desc": "<code>COUNT(*)</code> — все строки, <code>COUNT(col)</code> — где col не NULL.",
+  "ex": "SELECT COUNT(*) AS all_rows, COUNT(commission_pct) AS with_comm FROM employees;",
+  "out": "20 · 3",
+  "run": true
+ },
+ {
+  "id": "sum-avg-min-max",
+  "cat": "Группировка",
+  "name": "SUM / AVG / MIN / MAX",
+  "sig": "AVG(col)",
+  "desc": "Агрегаты игнорируют NULL.",
+  "ex": "SELECT AVG(commission_pct) AS a, AVG(NVL(commission_pct, 0)) AS b FROM employees;",
+  "out": "a — среднее по 3, b — по 20",
+  "trap": "AVG по колонке с NULL и AVG по NVL(col, 0) — разные числа. На собесе любят.",
+  "run": true
+ },
+ {
+  "id": "group-by-having",
+  "cat": "Группировка",
+  "name": "GROUP BY / HAVING",
+  "sig": "GROUP BY cols HAVING условие_на_агрегат",
+  "desc": "Группы и фильтр по ним. WHERE фильтрует строки до группировки, HAVING — группы после.",
+  "ex": "SELECT dept_id, COUNT(*) AS cnt, ROUND(AVG(salary)) AS avg_sal\n  FROM employees\n GROUP BY dept_id\nHAVING COUNT(*) > 2;",
+  "trap": "Каждый не-агрегатный столбец SELECT обязан быть в GROUP BY, иначе ORA-00979.",
+  "run": true
+ },
+ {
+  "id": "listagg",
+  "cat": "Группировка",
+  "name": "LISTAGG",
+  "sig": "LISTAGG(col, ', ') WITHIN GROUP (ORDER BY col)",
+  "desc": "Склеивает значения группы в одну строку.",
+  "ex": "SELECT dept_id, LISTAGG(first_name, ', ') WITHIN GROUP (ORDER BY first_name) AS names\n  FROM employees\n GROUP BY dept_id;",
+  "trap": "Длинный результат даёт ORA-01489; спасает <code>ON OVERFLOW TRUNCATE</code>.",
+  "run": true
+ },
+ {
+  "id": "rollup-cube-grouping-sets",
+  "cat": "Группировка",
+  "name": "ROLLUP / CUBE / GROUPING SETS",
+  "sig": "GROUP BY ROLLUP(a, b)",
+  "desc": "Промежуточные и общие итоги в одном запросе.",
+  "ex": "SELECT dept_id, COUNT(*) FROM employees GROUP BY ROLLUP(dept_id);",
+  "out": "последняя строка с dept_id = NULL — общий итог",
+  "trap": "Итоговую строку отличают от «настоящего» NULL функцией GROUPING(col).",
+  "run": true
+ },
+ {
+  "id": "row-number",
+  "cat": "Аналитика",
+  "name": "ROW_NUMBER",
+  "sig": "ROW_NUMBER() OVER (PARTITION BY … ORDER BY …)",
+  "desc": "Уникальный номер строки внутри группы. Основа задач «топ-N в каждой группе».",
+  "ex": "SELECT *\n  FROM (SELECT dept_id, first_name, salary,\n               ROW_NUMBER() OVER (PARTITION BY dept_id ORDER BY salary DESC) AS rn\n          FROM employees)\n WHERE rn = 1;",
+  "out": "самый высокооплачиваемый в каждом отделе",
+  "trap": "Фильтровать по аналитике в WHERE того же запроса нельзя — только во внешнем.",
+  "run": true
+ },
+ {
+  "id": "rank-dense-rank",
+  "cat": "Аналитика",
+  "name": "RANK / DENSE_RANK",
+  "sig": "RANK() OVER (ORDER BY …)",
+  "desc": "Ранг с одинаковыми значениями. RANK: 1, 1, 3. DENSE_RANK: 1, 1, 2.",
+  "ex": "SELECT first_name, salary,\n       RANK()       OVER (ORDER BY salary DESC) AS r,\n       DENSE_RANK() OVER (ORDER BY salary DESC) AS dr\n  FROM employees;",
+  "trap": "«Вторая по величине зарплата» — это DENSE_RANK = 2, а не ROW_NUMBER.",
+  "run": true
+ },
+ {
+  "id": "lag-lead",
+  "cat": "Аналитика",
+  "name": "LAG / LEAD",
+  "sig": "LAG(col [, n [, по_умолчанию]]) OVER (ORDER BY …)",
+  "desc": "Значение из предыдущей / следующей строки.",
+  "ex": "SELECT order_id, order_date,\n       order_date - LAG(order_date) OVER (ORDER BY order_date) AS days_since_prev\n  FROM orders;",
+  "run": true
+ },
+ {
+  "id": "c56",
+  "cat": "Аналитика",
+  "name": "Оконные агрегаты",
+  "sig": "SUM(col) OVER (PARTITION BY … [ORDER BY …])",
+  "desc": "Агрегат без схлопывания строк. С ORDER BY — нарастающий итог.",
+  "ex": "SELECT first_name, dept_id, salary,\n       SUM(salary) OVER (PARTITION BY dept_id) AS dept_total,\n       ROUND(salary / SUM(salary) OVER (PARTITION BY dept_id) * 100) AS pct\n  FROM employees;",
+  "run": true
+ },
+ {
+  "id": "first-value-last-value",
+  "cat": "Аналитика",
+  "name": "FIRST_VALUE / LAST_VALUE",
+  "sig": "LAST_VALUE(col) OVER (ORDER BY … ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING)",
+  "desc": "Первое/последнее значение в окне.",
+  "trap": "С ORDER BY окно по умолчанию заканчивается на текущей строке — LAST_VALUE вернёт саму строку. Нужно явное окно."
+ },
+ {
+  "id": "ntile",
+  "cat": "Аналитика",
+  "name": "NTILE",
+  "sig": "NTILE(n) OVER (ORDER BY …)",
+  "desc": "Делит строки на n примерно равных корзин (квартили, децили).",
+  "ex": "SELECT first_name, salary, NTILE(4) OVER (ORDER BY salary) AS quartile FROM employees;",
+  "run": true
+ },
+ {
+  "id": "inner-join",
+  "cat": "Соединения и подзапросы",
+  "name": "INNER JOIN",
+  "sig": "FROM a JOIN b ON a.id = b.a_id",
+  "desc": "Только строки, у которых нашлась пара.",
+  "ex": "SELECT e.first_name, d.dept_name\n  FROM employees e\n  JOIN departments d ON d.dept_id = e.dept_id;",
+  "out": "19 строк — 152 без отдела выпал",
+  "run": true
+ },
+ {
+  "id": "left-right-full-join",
+  "cat": "Соединения и подзапросы",
+  "name": "LEFT / RIGHT / FULL JOIN",
+  "sig": "FROM a LEFT JOIN b ON …",
+  "desc": "Все строки левой таблицы; где пары нет — NULL в столбцах правой.",
+  "ex": "SELECT d.dept_name, COUNT(e.emp_id) AS staff\n  FROM departments d\n  LEFT JOIN employees e ON e.dept_id = d.dept_id\n GROUP BY d.dept_name;",
+  "out": "HR → 0",
+  "trap": "Условие на правую таблицу в WHERE превращает LEFT JOIN в INNER. Его место — в ON.",
+  "run": true
+ },
+ {
+  "id": "self-join",
+  "cat": "Соединения и подзапросы",
+  "name": "Self-join",
+  "sig": "FROM t a JOIN t b ON a.parent = b.id",
+  "desc": "Таблица соединяется сама с собой — сотрудник и его менеджер.",
+  "ex": "SELECT e.first_name AS emp, m.first_name AS manager\n  FROM employees e\n  LEFT JOIN employees m ON m.emp_id = e.manager_id;",
+  "run": true
+ },
+ {
+  "id": "cross-join",
+  "cat": "Соединения и подзапросы",
+  "name": "CROSS JOIN",
+  "sig": "FROM a CROSS JOIN b",
+  "desc": "Декартово произведение: каждая строка с каждой.",
+  "ex": "SELECT COUNT(*) FROM departments CROSS JOIN products;",
+  "out": "6 × 12 = 72",
+  "run": true
+ },
+ {
+  "id": "c63",
+  "cat": "Соединения и подзапросы",
+  "name": "Старый синтаксис (+)",
+  "sig": "WHERE a.id = b.a_id(+)",
+  "desc": "Oracle-нотация внешнего соединения: (+) ставится со стороны, где может не быть пары.",
+  "ex": "SELECT d.dept_name, e.first_name\n  FROM departments d, employees e\n WHERE e.dept_id(+) = d.dept_id;",
+  "out": "то же, что LEFT JOIN employees",
+  "trap": "Встречается в старом коде — читать надо уметь, писать новый лучше через JOIN.",
+  "run": true
+ },
+ {
+  "id": "exists-not-exists",
+  "cat": "Соединения и подзапросы",
+  "name": "EXISTS / NOT EXISTS",
+  "sig": "WHERE EXISTS (SELECT 1 FROM … WHERE связь)",
+  "desc": "Есть ли хотя бы одна строка в коррелированном подзапросе.",
+  "ex": "SELECT c.cust_name\n  FROM customers c\n WHERE NOT EXISTS (SELECT 1 FROM orders o WHERE o.cust_id = c.cust_id);",
+  "out": "Kappa Textile",
+  "run": true
+ },
+ {
+  "id": "not-in-null",
+  "cat": "Соединения и подзапросы",
+  "name": "NOT IN и NULL",
+  "sig": "WHERE x NOT IN (SELECT col …)",
+  "desc": "Если в подзапросе есть хоть один NULL, NOT IN не вернёт ничего.",
+  "ex": "SELECT emp_id FROM employees\n WHERE emp_id NOT IN (SELECT emp_id FROM orders);",
+  "out": "0 строк — у заказа 9008 emp_id = NULL",
+  "trap": "Лечится NOT EXISTS или фильтром <code>WHERE emp_id IS NOT NULL</code> в подзапросе.",
+  "run": true
+ },
+ {
+  "id": "c66",
+  "cat": "Соединения и подзапросы",
+  "name": "Скалярный подзапрос",
+  "sig": "SELECT (SELECT … ) AS x",
+  "desc": "Подзапрос, возвращающий одно значение, можно ставить прямо в SELECT.",
+  "ex": "SELECT first_name, salary,\n       salary - (SELECT ROUND(AVG(salary)) FROM employees) AS diff_from_avg\n  FROM employees;",
+  "trap": "Вернул больше одной строки — ORA-01427.",
+  "run": true
+ },
+ {
+  "id": "with-cte",
+  "cat": "Соединения и подзапросы",
+  "name": "WITH (CTE)",
+  "sig": "WITH имя AS (SELECT …) SELECT … FROM имя",
+  "desc": "Именованный подзапрос: читается сверху вниз, можно использовать несколько раз.",
+  "ex": "WITH dept_avg AS (\n  SELECT dept_id, AVG(salary) AS avg_sal FROM employees GROUP BY dept_id\n)\nSELECT e.first_name, e.salary, ROUND(a.avg_sal) AS avg_sal\n  FROM employees e JOIN dept_avg a ON a.dept_id = e.dept_id\n WHERE e.salary > a.avg_sal;",
+  "out": "получают больше среднего по отделу",
+  "run": true
+ },
+ {
+  "id": "union-union-all",
+  "cat": "Соединения и подзапросы",
+  "name": "UNION / UNION ALL",
+  "sig": "SELECT … UNION [ALL] SELECT …",
+  "desc": "Объединение результатов. UNION убирает дубли (и сортирует), UNION ALL — нет и быстрее.",
+  "ex": "SELECT city FROM customers UNION SELECT location FROM departments;",
+  "trap": "Число и типы столбцов должны совпадать; ORDER BY — один, в самом конце.",
+  "run": true
+ },
+ {
+  "id": "intersect-minus",
+  "cat": "Соединения и подзапросы",
+  "name": "INTERSECT / MINUS",
+  "sig": "SELECT … INTERSECT | MINUS SELECT …",
+  "desc": "Пересечение и разность множеств. В 21c+ у MINUS есть синоним EXCEPT.",
+  "ex": "SELECT cust_id FROM customers MINUS SELECT cust_id FROM orders;",
+  "out": "1010",
+  "run": true
+ },
+ {
+  "id": "connect-by",
+  "cat": "Соединения и подзапросы",
+  "name": "CONNECT BY",
+  "sig": "START WITH … CONNECT BY PRIOR id = parent_id",
+  "desc": "Иерархический запрос (дерево). <code>LEVEL</code> — глубина, <code>SYS_CONNECT_BY_PATH</code> — путь.",
+  "ex": "SELECT LPAD(' ', (LEVEL - 1) * 2) || first_name AS tree, LEVEL\n  FROM employees\n START WITH manager_id IS NULL\nCONNECT BY PRIOR emp_id = manager_id;",
+  "out": "оргструктура от CEO",
+  "trap": "PRIOR стоит у родителя: PRIOR emp_id = manager_id идёт сверху вниз.",
+  "run": true
+ },
+ {
+  "id": "insert",
+  "cat": "DML, DDL, транзакции",
+  "name": "INSERT",
+  "sig": "INSERT INTO t (cols) VALUES (…) · INSERT INTO t SELECT …",
+  "desc": "Вставка одной строки или результата запроса.",
+  "trap": "Всегда перечисляй столбцы — иначе код сломается, когда в таблицу добавят колонку."
+ },
+ {
+  "id": "update-delete",
+  "cat": "DML, DDL, транзакции",
+  "name": "UPDATE / DELETE",
+  "sig": "UPDATE t SET … WHERE … · DELETE FROM t WHERE …",
+  "desc": "Изменение и удаление строк. <code>SQL%ROWCOUNT</code> в PL/SQL покажет, сколько затронуто.",
+  "trap": "Без WHERE — по всей таблице. Сначала SELECT с тем же WHERE."
+ },
+ {
+  "id": "merge",
+  "cat": "DML, DDL, транзакции",
+  "name": "MERGE",
+  "sig": "MERGE INTO t USING s ON (…) WHEN MATCHED THEN UPDATE … WHEN NOT MATCHED THEN INSERT …",
+  "desc": "«Upsert» одной командой: обновить, если есть, вставить, если нет.",
+  "ex": "MERGE INTO target t\nUSING staging s ON (t.id = s.id)\n WHEN MATCHED THEN UPDATE SET t.val = s.val\n WHEN NOT MATCHED THEN INSERT (id, val) VALUES (s.id, s.val);",
+  "trap": "Столбец из ON нельзя обновлять в WHEN MATCHED (ORA-38104). Дубли в источнике — ORA-30926."
+ },
+ {
+  "id": "delete-vs-truncate-vs-drop",
+  "cat": "DML, DDL, транзакции",
+  "name": "DELETE vs TRUNCATE vs DROP",
+  "desc": "<b>DELETE</b> — DML, по строкам, с WHERE, откатывается, срабатывают триггеры. <b>TRUNCATE</b> — DDL, мгновенно очищает всю таблицу, неявный COMMIT, не откатывается, сбрасывает HWM. <b>DROP</b> — удаляет саму таблицу (в корзину, если не PURGE).",
+  "trap": "Любой DDL делает неявный COMMIT — и твоих незакоммиченных изменений тоже."
+ },
+ {
+  "id": "commit-rollback-savepoint",
+  "cat": "DML, DDL, транзакции",
+  "name": "COMMIT / ROLLBACK / SAVEPOINT",
+  "sig": "SAVEPOINT a; … ROLLBACK TO a;",
+  "desc": "Фиксация, откат, откат до точки сохранения.",
+  "trap": "Другие сессии не видят твоих изменений до COMMIT (уровень READ COMMITTED). Читатели не блокируют писателей."
+ },
+ {
+  "id": "sequence-identity",
+  "cat": "DML, DDL, транзакции",
+  "name": "SEQUENCE / IDENTITY",
+  "sig": "CREATE SEQUENCE s; s.NEXTVAL · id NUMBER GENERATED ALWAYS AS IDENTITY",
+  "desc": "Генерация уникальных ключей. IDENTITY (12c+) — последовательность, встроенная в столбец.",
+  "trap": "Последовательность не откатывается: ROLLBACK оставляет дыры в номерах — это нормально."
+ },
+ {
+  "id": "c77",
+  "cat": "DML, DDL, транзакции",
+  "name": "Ограничения",
+  "sig": "PRIMARY KEY · FOREIGN KEY · UNIQUE · CHECK · NOT NULL",
+  "desc": "PK = UNIQUE + NOT NULL. FK может быть <code>ON DELETE CASCADE</code> или <code>SET NULL</code>.",
+  "trap": "UNIQUE допускает несколько NULL (NULL ≠ NULL). Индекс на FK-столбце нужен, иначе блокировки при удалении родителя."
+ },
+ {
+  "id": "c78",
+  "cat": "DML, DDL, транзакции",
+  "name": "Индексы",
+  "sig": "CREATE INDEX i ON t (col) · (UPPER(col)) · BITMAP",
+  "desc": "B-tree — по умолчанию; функциональный — для WHERE UPPER(col) = …; bitmap — для низкой кардинальности в DWH.",
+  "trap": "Полностью NULL-ключи в B-tree не хранятся: <code>WHERE col IS NULL</code> по обычному индексу не пойдёт."
+ },
+ {
+  "id": "view",
+  "cat": "DML, DDL, транзакции",
+  "name": "VIEW",
+  "sig": "CREATE OR REPLACE VIEW v AS SELECT …",
+  "desc": "Сохранённый запрос. Материализованное представление (MATERIALIZED VIEW) хранит ещё и данные."
+ },
+ {
+  "id": "c80",
+  "cat": "PL/SQL: основы",
+  "name": "Анонимный блок",
+  "sig": "DECLARE … BEGIN … EXCEPTION … END;",
+  "desc": "Обязательны только BEGIN и END. Пустой блок — <code>BEGIN NULL; END;</code>.",
+  "ex": "DECLARE\n  v_cnt NUMBER;\nBEGIN\n  SELECT COUNT(*) INTO v_cnt FROM employees;\n  DBMS_OUTPUT.PUT_LINE('Сотрудников: ' || v_cnt);\nEND;",
+  "out": "Сотрудников: 20",
+  "run": true
+ },
+ {
+  "id": "type-rowtype",
+  "cat": "PL/SQL: основы",
+  "name": "%TYPE / %ROWTYPE",
+  "sig": "v emp.salary%TYPE · r emp%ROWTYPE",
+  "desc": "Тип переменной берётся из столбца или строки таблицы — код не ломается при изменении типа.",
+  "ex": "DECLARE\n  r employees%ROWTYPE;\nBEGIN\n  SELECT * INTO r FROM employees WHERE emp_id = 100;\n  DBMS_OUTPUT.PUT_LINE(r.first_name || ' ' || r.salary);\nEND;",
+  "run": true
+ },
+ {
+  "id": "select-into",
+  "cat": "PL/SQL: основы",
+  "name": "SELECT INTO",
+  "sig": "SELECT col INTO v FROM … WHERE …;",
+  "desc": "Ровно одна строка в переменные.",
+  "trap": "0 строк — NO_DATA_FOUND, больше одной — TOO_MANY_ROWS. Агрегат без GROUP BY всегда даёт ровно одну строку."
+ },
+ {
+  "id": "if-elsif-else",
+  "cat": "PL/SQL: основы",
+  "name": "IF / ELSIF / ELSE",
+  "sig": "IF … THEN … ELSIF … THEN … ELSE … END IF;",
+  "desc": "Ветвление.",
+  "trap": "Пишется ELSIF — без E посередине. Условие с NULL — не TRUE, уходит в ELSE."
+ },
+ {
+  "id": "c84",
+  "cat": "PL/SQL: основы",
+  "name": "Циклы",
+  "sig": "LOOP … EXIT WHEN …; END LOOP · WHILE … LOOP · FOR i IN 1..n LOOP",
+  "desc": "FOR-счётчик объявляется сам и виден только внутри цикла. <code>REVERSE</code> — обратный порядок. <code>CONTINUE</code> — к следующей итерации.",
+  "ex": "BEGIN\n  FOR i IN 1..3 LOOP\n    DBMS_OUTPUT.PUT_LINE('i = ' || i);\n  END LOOP;\nEND;",
+  "out": "i = 1, i = 2, i = 3",
+  "run": true
+ },
+ {
+  "id": "dbms-output",
+  "cat": "PL/SQL: основы",
+  "name": "DBMS_OUTPUT",
+  "sig": "DBMS_OUTPUT.PUT_LINE(текст)",
+  "desc": "Отладочный вывод в буфер. Клиент показывает его после выполнения блока.",
+  "trap": "Это не лог: в проде его никто не видит. Для логов — таблица + автономная транзакция."
+ },
+ {
+  "id": "cursor-for-loop",
+  "cat": "PL/SQL: курсоры",
+  "name": "Cursor FOR loop",
+  "sig": "FOR r IN (SELECT …) LOOP … END LOOP;",
+  "desc": "Самый короткий способ пройти по строкам: OPEN/FETCH/CLOSE делаются сами.",
+  "ex": "BEGIN\n  FOR r IN (SELECT first_name, salary FROM employees WHERE dept_id = 20) LOOP\n    DBMS_OUTPUT.PUT_LINE(r.first_name || ': ' || r.salary);\n  END LOOP;\nEND;",
+  "run": true
+ },
+ {
+  "id": "c87",
+  "cat": "PL/SQL: курсоры",
+  "name": "Явный курсор",
+  "sig": "CURSOR c IS SELECT …; OPEN c; FETCH c INTO …; CLOSE c;",
+  "desc": "Полный контроль: атрибуты <code>%FOUND %NOTFOUND %ROWCOUNT %ISOPEN</code>. Можно с параметрами.",
+  "ex": "DECLARE\n  CURSOR c(p_dept NUMBER) IS SELECT first_name FROM employees WHERE dept_id = p_dept;\n  v_name employees.first_name%TYPE;\nBEGIN\n  OPEN c(10);\n  LOOP\n    FETCH c INTO v_name;\n    EXIT WHEN c%NOTFOUND;\n    DBMS_OUTPUT.PUT_LINE(c%ROWCOUNT || '. ' || v_name);\n  END LOOP;\n  CLOSE c;\nEND;",
+  "trap": "EXIT WHEN c%NOTFOUND — сразу после FETCH, иначе последняя строка обработается дважды.",
+  "run": true
+ },
+ {
+  "id": "sql-rowcount",
+  "cat": "PL/SQL: курсоры",
+  "name": "SQL%ROWCOUNT",
+  "sig": "SQL%ROWCOUNT · SQL%FOUND · SQL%NOTFOUND",
+  "desc": "Атрибуты неявного курсора — последней DML/SELECT INTO в блоке.",
+  "trap": "Читай сразу после команды: следующая команда перезапишет значение."
+ },
+ {
+  "id": "sys-refcursor",
+  "cat": "PL/SQL: курсоры",
+  "name": "SYS_REFCURSOR",
+  "sig": "OPEN rc FOR SELECT …;",
+  "desc": "Ссылка на курсор: можно вернуть из функции во внешний код (Java, отчёты).",
+  "trap": "Кто открыл — тот должен убедиться, что курсор будет закрыт, иначе ORA-01000 maximum open cursors."
+ },
+ {
+  "id": "for-update-where-current-of",
+  "cat": "PL/SQL: курсоры",
+  "name": "FOR UPDATE / WHERE CURRENT OF",
+  "sig": "CURSOR c IS SELECT … FOR UPDATE; UPDATE … WHERE CURRENT OF c;",
+  "desc": "Блокирует выбранные строки и позволяет обновлять текущую строку курсора.",
+  "trap": "COMMIT внутри цикла по FOR UPDATE-курсору снимает блокировки — следующий FETCH даст ORA-01002."
+ },
+ {
+  "id": "exception-when",
+  "cat": "PL/SQL: исключения",
+  "name": "EXCEPTION WHEN",
+  "sig": "EXCEPTION WHEN NO_DATA_FOUND THEN … WHEN OTHERS THEN …",
+  "desc": "Обработка ошибок. Частые: NO_DATA_FOUND, TOO_MANY_ROWS, ZERO_DIVIDE, DUP_VAL_ON_INDEX, VALUE_ERROR, INVALID_NUMBER.",
+  "ex": "DECLARE\n  v NUMBER;\nBEGIN\n  SELECT salary INTO v FROM employees WHERE emp_id = -1;\nEXCEPTION\n  WHEN NO_DATA_FOUND THEN\n    DBMS_OUTPUT.PUT_LINE('Нет такого сотрудника');\nEND;",
+  "out": "Нет такого сотрудника",
+  "trap": "<code>WHEN OTHERS THEN NULL;</code> — худшая практика: ошибка исчезает бесследно.",
+  "run": true
+ },
+ {
+  "id": "sqlcode-sqlerrm",
+  "cat": "PL/SQL: исключения",
+  "name": "SQLCODE / SQLERRM",
+  "sig": "SQLCODE · SQLERRM · DBMS_UTILITY.FORMAT_ERROR_BACKTRACE",
+  "desc": "Код и текст текущей ошибки; BACKTRACE — строка, где она возникла.",
+  "trap": "SQLCODE/SQLERRM нельзя напрямую вставить в SQL-команду — сначала в переменную."
+ },
+ {
+  "id": "raise-application-error",
+  "cat": "PL/SQL: исключения",
+  "name": "RAISE_APPLICATION_ERROR",
+  "sig": "RAISE_APPLICATION_ERROR(-20001, 'текст')",
+  "desc": "Своя ошибка с кодом от -20000 до -20999 и сообщением для вызывающего."
+ },
+ {
+  "id": "c94",
+  "cat": "PL/SQL: исключения",
+  "name": "Свои исключения",
+  "sig": "e_x EXCEPTION; PRAGMA EXCEPTION_INIT(e_x, -2292);",
+  "desc": "Объявить своё исключение или дать имя системной ошибке ORA-NNNNN, чтобы ловить её по имени.",
+  "trap": "RAISE; без имени внутри обработчика пробрасывает текущую ошибку дальше — сохраняя её."
+ },
+ {
+  "id": "c95",
+  "cat": "PL/SQL: подпрограммы",
+  "name": "Процедура",
+  "sig": "CREATE OR REPLACE PROCEDURE p (a IN NUMBER, b OUT VARCHAR2) IS … BEGIN … END;",
+  "desc": "Выполняет действие. Режимы параметров: IN (по умолчанию), OUT, IN OUT. <code>NOCOPY</code> — передача по ссылке."
+ },
+ {
+  "id": "c96",
+  "cat": "PL/SQL: подпрограммы",
+  "name": "Функция",
+  "sig": "CREATE OR REPLACE FUNCTION f (a NUMBER) RETURN NUMBER IS … BEGIN RETURN …; END;",
+  "desc": "Возвращает значение; можно вызывать из SQL, если нет DML и OUT-параметров. <code>DETERMINISTIC</code>, <code>RESULT_CACHE</code> — подсказки для кэша.",
+  "trap": "Функция с DML, вызванная из SELECT, падает с ORA-14551."
+ },
+ {
+  "id": "c97",
+  "cat": "PL/SQL: подпрограммы",
+  "name": "Пакет",
+  "sig": "CREATE PACKAGE p IS … END; · CREATE PACKAGE BODY p IS … END;",
+  "desc": "Спецификация — публичный интерфейс, тело — реализация и приватные элементы. Переменные пакета живут всю сессию.",
+  "trap": "Перекомпиляция тела не инвалидирует зависимые объекты; изменение спецификации — инвалидирует. Сброс состояния — ORA-04068."
+ },
+ {
+  "id": "c98",
+  "cat": "PL/SQL: подпрограммы",
+  "name": "Триггер",
+  "sig": "CREATE TRIGGER t BEFORE INSERT OR UPDATE ON tab FOR EACH ROW BEGIN … END;",
+  "desc": "Срабатывает на событие. Строчный (FOR EACH ROW) видит <code>:NEW</code> и <code>:OLD</code>. Предикаты INSERTING / UPDATING / DELETING.",
+  "trap": "Строчный триггер не может читать свою же таблицу — ORA-04091 mutating table. Решения: compound trigger, statement-триггер."
+ },
+ {
+  "id": "c99",
+  "cat": "PL/SQL: подпрограммы",
+  "name": "Автономная транзакция",
+  "sig": "PRAGMA AUTONOMOUS_TRANSACTION;",
+  "desc": "Подпрограмма с собственной независимой транзакцией — обязана сама сделать COMMIT/ROLLBACK. Классика — запись лога ошибок.",
+  "trap": "Не видит незакоммиченные изменения основной транзакции. Не способ «обойти» мутирующую таблицу."
+ },
+ {
+  "id": "c100",
+  "cat": "PL/SQL: коллекции и BULK",
+  "name": "Ассоциативный массив",
+  "sig": "TYPE t IS TABLE OF NUMBER INDEX BY PLS_INTEGER | VARCHAR2(30);",
+  "desc": "Словарь в памяти: ключ — число или строка, расширять не нужно. Только в PL/SQL."
+ },
+ {
+  "id": "nested-table-varray",
+  "cat": "PL/SQL: коллекции и BULK",
+  "name": "Nested table / VARRAY",
+  "sig": "TYPE t IS TABLE OF …; · TYPE v IS VARRAY(10) OF …;",
+  "desc": "Нужна инициализация конструктором и <code>EXTEND</code>. Могут быть типами SQL (CREATE TYPE). VARRAY — с максимальным размером.",
+  "trap": "Обращение к элементу неинициализированной коллекции — ORA-06531, за пределами — ORA-06533."
+ },
+ {
+  "id": "c102",
+  "cat": "PL/SQL: коллекции и BULK",
+  "name": "Методы коллекций",
+  "sig": "COUNT · FIRST · LAST · NEXT(i) · PRIOR(i) · EXISTS(i) · DELETE · EXTEND · TRIM",
+  "desc": "Для разреженных коллекций обходи через FIRST/NEXT, а не FOR i IN 1..COUNT."
+ },
+ {
+  "id": "bulk-collect",
+  "cat": "PL/SQL: коллекции и BULK",
+  "name": "BULK COLLECT",
+  "sig": "SELECT … BULK COLLECT INTO coll … · FETCH c BULK COLLECT INTO coll LIMIT 1000;",
+  "desc": "Читает много строк за одно переключение контекста SQL↔PL/SQL.",
+  "ex": "DECLARE\n  TYPE t_names IS TABLE OF employees.first_name%TYPE;\n  v t_names;\nBEGIN\n  SELECT first_name BULK COLLECT INTO v FROM employees;\n  DBMS_OUTPUT.PUT_LINE('Загружено: ' || v.COUNT);\nEND;",
+  "out": "Загружено: 20",
+  "trap": "С LIMIT проверяй <code>EXIT WHEN coll.COUNT = 0</code>, а не %NOTFOUND — иначе потеряешь последнюю неполную пачку.",
+  "run": true
+ },
+ {
+  "id": "forall",
+  "cat": "PL/SQL: коллекции и BULK",
+  "name": "FORALL",
+  "sig": "FORALL i IN 1..coll.COUNT [SAVE EXCEPTIONS] INSERT/UPDATE/DELETE …",
+  "desc": "Одна DML для всей коллекции за одно переключение контекста. Ошибки по строкам — <code>SQL%BULK_EXCEPTIONS</code> (ORA-24381).",
+  "trap": "FORALL — не цикл: внутри ровно одна DML-команда."
+ },
+ {
+  "id": "execute-immediate",
+  "cat": "PL/SQL: динамический SQL",
+  "name": "EXECUTE IMMEDIATE",
+  "sig": "EXECUTE IMMEDIATE 'sql' [INTO …] [USING …];",
+  "desc": "Выполнить SQL, собранный строкой: DDL из PL/SQL, имя таблицы в переменной.",
+  "ex": "DECLARE\n  v_cnt NUMBER;\n  v_tab VARCHAR2(30) := 'EMPLOYEES';\nBEGIN\n  EXECUTE IMMEDIATE 'SELECT COUNT(*) FROM ' || DBMS_ASSERT.SQL_OBJECT_NAME(v_tab) INTO v_cnt;\n  DBMS_OUTPUT.PUT_LINE(v_cnt);\nEND;",
+  "out": "20",
+  "run": true
+ },
+ {
+  "id": "bind",
+  "cat": "PL/SQL: динамический SQL",
+  "name": "Bind-переменные",
+  "sig": "EXECUTE IMMEDIATE '… WHERE id = :1' USING v_id;",
+  "desc": "Значения передавай через USING: защищает от SQL-инъекций и не засоряет shared pool новыми планами.",
+  "trap": "Имена таблиц и столбцов биндить нельзя — их проверяют через DBMS_ASSERT."
+ },
+ {
+  "id": "user-tables-user-tab-columns",
+  "cat": "Словарь и диагностика",
+  "name": "USER_TABLES / USER_TAB_COLUMNS",
+  "sig": "SELECT … FROM user_tab_columns WHERE table_name = 'EMPLOYEES'",
+  "desc": "Метаданные своей схемы. ALL_ — всё, к чему есть доступ, DBA_ — вся база.",
+  "ex": "SELECT column_name, data_type, nullable\n  FROM user_tab_columns\n WHERE table_name = 'EMPLOYEES'\n ORDER BY column_id;",
+  "trap": "Имена в словаре хранятся в верхнем регистре.",
+  "run": true
+ },
+ {
+  "id": "user-objects",
+  "cat": "Словарь и диагностика",
+  "name": "USER_OBJECTS",
+  "sig": "SELECT object_name, object_type, status FROM user_objects",
+  "desc": "Все объекты схемы и их статус: INVALID означает, что объект надо перекомпилировать.",
+  "ex": "SELECT object_type, COUNT(*) FROM user_objects GROUP BY object_type;",
+  "run": true
+ },
+ {
+  "id": "user-source-user-errors",
+  "cat": "Словарь и диагностика",
+  "name": "USER_SOURCE / USER_ERRORS",
+  "sig": "SELECT text FROM user_source WHERE name = 'P'",
+  "desc": "Исходный код PL/SQL-объектов и ошибки их компиляции.",
+  "ex": "SELECT name, type, line, text FROM user_errors ORDER BY name, sequence;",
+  "run": true
+ },
+ {
+  "id": "user-constraints",
+  "cat": "Словарь и диагностика",
+  "name": "USER_CONSTRAINTS",
+  "sig": "constraint_type: P, R, U, C",
+  "desc": "Ограничения таблиц: P — первичный ключ, R — внешний, U — уникальный, C — check и NOT NULL.",
+  "ex": "SELECT table_name, constraint_name, constraint_type\n  FROM user_constraints\n ORDER BY table_name;",
+  "run": true
+ },
+ {
+  "id": "explain-plan-dbms-xplan",
+  "cat": "Словарь и диагностика",
+  "name": "EXPLAIN PLAN / DBMS_XPLAN",
+  "sig": "EXPLAIN PLAN FOR …; SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY);",
+  "desc": "План выполнения: TABLE ACCESS FULL, INDEX RANGE SCAN, NESTED LOOPS, HASH JOIN, оценка строк и стоимости.",
+  "trap": "Это прогноз оптимизатора. Реальный план выполненного запроса — DBMS_XPLAN.DISPLAY_CURSOR."
+ }
+]

@@ -3,42 +3,69 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0E1014" media="(prefers-color-scheme: dark)">
-<meta name="theme-color" content="#F5F5F2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#07080B" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#F6F6F9" media="(prefers-color-scheme: light)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="PL/SQL">
 <title>PL/SQL: подготовка</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23E7A04A'/%3E%3Ctext x='16' y='22' font-family='monospace' font-size='15' font-weight='700' text-anchor='middle' fill='%230E1014'%3ESQL%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23A496FF'/%3E%3Cstop offset='1' stop-color='%235CC8FF'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='8' fill='url(%23g)'/%3E%3Ctext x='16' y='21' font-family='monospace' font-size='12' font-weight='700' text-anchor='middle' fill='white'%3ESQL%3C/text%3E%3C/svg%3E">
+<script>
+  // тема выбирается до отрисовки, чтобы не мигало
+  try { var t = localStorage.getItem("plsql-theme"); if (t === "dark" || t === "light") document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="/vendor/codemirror/lib/codemirror.css">
 <link rel="stylesheet" href="/css/app.css">
 </head>
-<body>
+<body class="guest">
 
-<header class="top">
+<!-- градиент для колец прогресса -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#A496FF"/><stop offset=".6" stop-color="#7B6BFF"/><stop offset="1" stop-color="#5CC8FF"/>
+    </linearGradient>
+  </defs>
+</svg>
+
+<aside class="sidebar" id="sidebar">
   <a class="brand" href="#/">
     <span class="brand-mark">SQL</span>
-    <span class="brand-text">PL/SQL<small>подготовка</small></span>
+    <span class="brand-text">PL/SQL Prep<small>к собеседованию</small></span>
   </a>
-  <nav class="tabs" id="tabs" hidden>
-    <a href="#/" data-tab="home">Уроки</a>
-    <a href="#/console" data-tab="console">Консоль</a>
-    <a href="#/quiz" data-tab="quiz">Тест</a>
-    <a href="#/schema" data-tab="schema">Схема</a>
-  </nav>
-  <div class="me" id="me"></div>
+  <button class="search-btn" type="button" data-search></button>
+  <nav class="nav" id="nav"></nav>
+  <div class="side-foot">
+    <div class="theme-switch" id="theme-switch"></div>
+    <div class="me" id="me"></div>
+  </div>
+</aside>
+<div class="scrim" id="scrim"></div>
+
+<header class="mtop">
+  <a class="brand" href="#/">
+    <span class="brand-mark">SQL</span>
+    <span class="brand-text">PL/SQL Prep</span>
+  </a>
+  <button class="icon-btn" type="button" data-search aria-label="Поиск"></button>
+  <button class="icon-btn" type="button" id="menu-btn" aria-label="Меню"></button>
 </header>
 
 <main id="app">
   <p class="loading">Загружаю…</p>
 </main>
 
+<nav class="tabbar" id="tabbar"></nav>
+
+<div class="palette" id="palette" hidden></div>
+
 <script src="/vendor/codemirror/lib/codemirror.js"></script>
 <script src="/vendor/codemirror/mode/sql/sql.js"></script>
 <script src="/vendor/codemirror/addon/edit/matchbrackets.js"></script>
 <script src="/vendor/codemirror/addon/edit/closebrackets.js"></script>
+<script src="/vendor/codemirror/addon/runmode/runmode.js"></script>
 <script src="/js/app.js"></script>
 </body>
 </html>
