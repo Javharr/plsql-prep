@@ -22,20 +22,47 @@ const {
   ORACLE_WALLET_PASSWORD,
   ORACLE_WALLET_PEM_B64,
   ORACLE_TNSNAMES_B64,
+  ORACLE_CONNECT_STRING, // для локальной разработки: host:port/service без wallet
 } = process.env;
 
 const CALL_TIMEOUT_MS = 20_000;
 const MAX_ROWS = 500;
 const MAX_OUTPUT_LINES = 1000;
 
-export const oracleEnabled = Boolean(
-  ORACLE_USER && ORACLE_PASSWORD && ORACLE_TNS_ALIAS &&
-  ORACLE_WALLET_PASSWORD && ORACLE_WALLET_PEM_B64 && ORACLE_TNSNAMES_B64
+const useWallet = Boolean(
+  ORACLE_TNS_ALIAS && ORACLE_WALLET_PASSWORD && ORACLE_WALLET_PEM_B64 && ORACLE_TNSNAMES_B64
 );
+export const oracleEnabled = Boolean(ORACLE_USER && ORACLE_PASSWORD && (useWallet || ORACLE_CONNECT_STRING));
 
-// даты, CLOB и числа забираем строками: так результат выглядит как в DataGrip,
-// и сравнение при проверке задач не спотыкается о плавающую точку
-oracledb.fetchAsString = [oracledb.DATE, oracledb.CLOB, oracledb.NUMBER];
+// Даты, CLOB и числа забираем строками: так результат выглядит как в DataGrip,
+// и сравнение при проверке задач не спотыкается о плавающую точку.
+// В thin-режиме fetchAsString для дат даёт формат JavaScript («Sun Mar 01 2015 …»),
+// поэтому даты форматируем сами, как NLS_DATE_FORMAT 'YYYY-MM-DD HH24:MI:SS'.
+const pad = (n, w = 2) => String(n).padStart(w, "0");
+const fmtDate = (d) =>
+  d == null ? d : `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+const fmtTs = (d) => (d == null ? d : `${fmtDate(d)}.${pad(d.getMilliseconds(), 3)}`);
+const fmtNum = (v) => (v == null ? v : v.replace(/^(-?)\./, "$10.")); // .15 → 0.15, как в DataGrip
+
+oracledb.fetchTypeHandler = (meta) => {
+  switch (meta.dbType) {
+    case oracledb.DB_TYPE_DATE:
+      return { converter: fmtDate };
+    case oracledb.DB_TYPE_TIMESTAMP:
+    case oracledb.DB_TYPE_TIMESTAMP_TZ:
+    case oracledb.DB_TYPE_TIMESTAMP_LTZ:
+      return { converter: fmtTs };
+    case oracledb.DB_TYPE_NUMBER:
+    case oracledb.DB_TYPE_BINARY_DOUBLE:
+    case oracledb.DB_TYPE_BINARY_FLOAT:
+      return { type: oracledb.STRING, converter: fmtNum };
+    case oracledb.DB_TYPE_CLOB:
+    case oracledb.DB_TYPE_NCLOB:
+      return { type: oracledb.STRING };
+    default:
+      return undefined;
+  }
+};
 
 let poolPromise = null;
 
@@ -49,15 +76,17 @@ function writeWallet() {
 function getPool() {
   if (!oracleEnabled) throw new Error("Oracle не подключена");
   if (!poolPromise) {
-    const dir = writeWallet();
+    const conn = useWallet
+      ? (() => {
+          const dir = writeWallet();
+          return { connectString: ORACLE_TNS_ALIAS, configDir: dir, walletLocation: dir, walletPassword: ORACLE_WALLET_PASSWORD };
+        })()
+      : { connectString: ORACLE_CONNECT_STRING };
     poolPromise = oracledb
       .createPool({
         user: ORACLE_USER,
         password: ORACLE_PASSWORD,
-        connectString: ORACLE_TNS_ALIAS,
-        configDir: dir,
-        walletLocation: dir,
-        walletPassword: ORACLE_WALLET_PASSWORD,
+        ...conn,
         poolMin: 0,
         poolMax: 2,
         poolIncrement: 1,
@@ -86,7 +115,7 @@ function getPool() {
 /* ---------------- разбор текста запроса ---------------- */
 
 const PLSQL_START =
-  /^(declare|begin|create\s+(or\s+replace\s+)?((editionable|noneditionable)\s+)?(procedure|function|package|trigger|type))\b/i;
+  /^(<<\w+>>\s*)?(declare|begin|create\s+(or\s+replace\s+)?((editionable|noneditionable)\s+)?(procedure|function|package|trigger|type))\b/i;
 
 // Делит текст на команды по «;», не трогая «;» внутри строк и комментариев.
 function splitSql(text) {
@@ -337,4 +366,67 @@ export function compare(got, exp, ordered = false) {
     extra: extra.slice(0, 3),
     columns: got.columns,
   };
+}
+
+/* ---------------- проверка шага по режимам ----------------
+   rows    — сравнить строки SELECT ученика с эталонным SELECT (check.sql)
+   output  — выполнить блок ученика и эталонный блок, сравнить вывод DBMS_OUTPUT
+   verify  — выполнить команду ученика (CREATE, DDL, DML, блок), затем проверочный
+             запрос check.verify и сравнить его результат с эталоном check.expect
+   reset: true — перед проверкой выполнить setup урока (пересоздать песочницу) */
+
+const outLines = (r) => {
+  const lines = (r.output || []).map((l) => String(l ?? "").replace(/\s+$/, ""));
+  while (lines.length && lines[lines.length - 1] === "") lines.pop();
+  return lines;
+};
+
+export function compareOutput(got, exp) {
+  if (got.columns) {
+    return { ok: false, message: "Здесь нужен PL/SQL-блок, который печатает результат через DBMS_OUTPUT.PUT_LINE, а не SELECT." };
+  }
+  const a = outLines(got);
+  const b = outLines(exp);
+  if (a.length === b.length && a.every((l, i) => l === b[i])) return { ok: true, message: "Верно." };
+  let message;
+  if (!a.length) message = "Блок выполнился, но ничего не напечатал. Нужен DBMS_OUTPUT.PUT_LINE.";
+  else if (a.length !== b.length) message = `Строк вывода у тебя ${a.length}, а нужно ${b.length}.`;
+  else {
+    const i = a.findIndex((l, k) => l !== b[k]);
+    message = `Отличается строка ${i + 1}: у тебя «${a[i]}», а нужно «${b[i]}».`;
+  }
+  return { ok: false, message, output: { got: a.slice(0, 15), expected: b.slice(0, 15) } };
+}
+
+export async function checkStep(c, userSql, { setup } = {}) {
+  const mode = c.mode || "rows";
+  // reset: перед проверкой вернуть таблицы-песочницы урока в исходное состояние
+  if (c.reset && setup) await run(setup);
+  if (mode === "rows") return check(userSql, c.sql, { ordered: !!c.ordered });
+
+  if (mode === "output") {
+    const exp = await run(c.sql);
+    let got;
+    try { got = await run(userSql); } catch (e) { return { ok: false, message: e.message, error: true }; }
+    if (got.warning) return { ok: false, message: [got.warning, ...(got.compileErrors || [])].join("\n"), error: true };
+    return compareOutput(got, exp);
+  }
+
+  if (mode === "verify") {
+    let got;
+    try { got = await run(userSql); } catch (e) { return { ok: false, message: e.message, error: true }; }
+    if (got.warning) {
+      return { ok: false, message: ["Создалось с ошибками компиляции:", ...(got.compileErrors || [])].join("\n"), error: true };
+    }
+    let v;
+    try { v = await run(c.verify); } catch (e) { return { ok: false, message: "Команда выполнилась, но проверка не прошла: " + e.message, error: true }; }
+    const exp = await run(c.expect);
+    if (v.columns) {
+      const r = compare(v, exp, !!c.ordered);
+      if (!r.ok) r.message = "Команда выполнилась, но результат не тот. " + r.message;
+      return r;
+    }
+    return compareOutput(v, exp);
+  }
+  return { ok: false, message: "Неизвестный режим проверки." };
 }

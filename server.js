@@ -4,8 +4,9 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import bcrypt from "bcryptjs";
+import compression from "compression";
 import { pool, migrate } from "./db.js";
-import { oracleEnabled, run as runSql, check as checkSql, schema as sqlSchema } from "./oracle.js";
+import { oracleEnabled, run as runSql, checkStep, schema as sqlSchema } from "./oracle.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -17,6 +18,7 @@ const SESSION_DAYS = 60;
 const app = express();
 app.set("trust proxy", 1); // Railway стоит за прокси — нужен настоящий IP для лимита попыток
 app.disable("x-powered-by");
+app.use(compression()); // уроки и вопросы — почти мегабайт JSON, в gzip ~150 КБ
 
 app.use((_req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
@@ -225,18 +227,24 @@ api.put("/progress", wrap(requireUser), wrap(async (req, res) => {
 /* ---------------- SQL: выполнение и проверка ---------------- */
 
 // эталоны для проверки берём с сервера, а не из запроса — подменить их из браузера нельзя
-let lessonsCache = { mtime: 0, steps: new Map() };
-function stepById(id) {
+let lessonsCache = { mtime: 0, steps: new Map(), lessons: new Map() };
+function loadLessons() {
   const file = path.join(__dirname, "public", "content", "lessons.json");
   const { mtimeMs } = fs.statSync(file);
   if (mtimeMs !== lessonsCache.mtime) {
     const data = JSON.parse(fs.readFileSync(file, "utf8"));
     const steps = new Map();
-    for (const l of data.lessons) for (const s of l.steps) steps.set(s.id, s);
-    lessonsCache = { mtime: mtimeMs, steps };
+    const lessons = new Map();
+    for (const l of data.lessons) {
+      lessons.set(l.id, l);
+      for (const s of l.steps) steps.set(s.id, { ...s, lessonId: l.id });
+    }
+    lessonsCache = { mtime: mtimeMs, steps, lessons };
   }
-  return lessonsCache.steps.get(id);
+  return lessonsCache;
 }
+const stepById = (id) => loadLessons().steps.get(id);
+const lessonById = (id) => loadLessons().lessons.get(id);
 
 // не больше 30 запусков в минуту: защита от случайного цикла в интерфейсе
 const runLog = new Map();
@@ -274,10 +282,24 @@ api.post("/sql/check", wrap(requireUser), wrap(async (req, res) => {
   if (!oracleEnabled) return res.status(503).json({ error: "Oracle пока не подключена к сайту." });
   if (tooManyRuns(req.user.id)) return res.status(429).json({ error: "Слишком часто. Подожди минуту." });
   const step = stepById(String(req.body?.stepId || ""));
-  if (!step?.check?.sql) return res.status(404).json({ error: "У этого шага нет автопроверки." });
+  if (!step?.check) return res.status(404).json({ error: "У этого шага нет автопроверки." });
   const sql = String(req.body?.sql || "");
   if (sql.length > 20_000) return res.status(400).json({ error: "Слишком длинный текст." });
-  res.json(await checkSql(sql, step.check.sql, { ordered: !!step.check.ordered }));
+  res.json(await checkStep(step.check, sql, { setup: lessonById(step.lessonId)?.setup }));
+}));
+
+// подготовка таблиц урока: текст берётся только из lessons.json на сервере
+api.post("/sql/setup", wrap(requireUser), wrap(async (req, res) => {
+  if (!oracleEnabled) return res.status(503).json({ error: "Oracle пока не подключена к сайту." });
+  if (tooManyRuns(req.user.id)) return res.status(429).json({ error: "Слишком часто. Подожди минуту." });
+  const lesson = lessonById(String(req.body?.lessonId || ""));
+  if (!lesson?.setup) return res.status(404).json({ error: "Этому уроку подготовка не нужна." });
+  try {
+    res.json(await runSql(lesson.setup));
+  } catch (e) {
+    if (e.userFacing) return res.status(400).json({ error: e.message });
+    throw e;
+  }
 }));
 
 app.use("/api", api);

@@ -2175,5 +2175,2675 @@
   "topic": "О себе",
   "q": "Ты был тестировщиком. Почему уходишь в разработку и чем опыт QA полезен PL/SQL-разработчику?",
   "answer": "Структура ответа: <b>1)</b> что делал в QA (тестировал логику, писал SQL-проверки данных, разбирал дефекты в PL/SQL-пакетах); <b>2)</b> что понял — хочешь не только находить ошибки, но и писать надёжный код; <b>3)</b> что уже сделал для перехода (курс по SQL/PL/SQL, свой проект: учебная схема, пакет загрузки с логированием, тренажёр на Oracle Cloud); <b>4)</b> чем полезен: думаешь граничными случаями (NULL, пустые выборки, дубли), пишешь проверяемый код, умеешь читать логи и воспроизводить баги.<br>Подготовь 2 истории: баг, который нашёл в логике PL/SQL, и код, который написал сам."
+ },
+ {
+  "id": "l04-rownum-gt",
+  "topic": "ROWNUM",
+  "q": "Что вернёт этот запрос?",
+  "code": "SELECT * FROM employees WHERE ROWNUM > 1;",
+  "opts": [
+   "Ни одной строки",
+   "19 строк — все, кроме первой",
+   "Ошибку ORA-00904",
+   "Одну строку"
+  ],
+  "a": 0,
+  "why": "<code>ROWNUM</code> присваивается строке, когда она проходит условие. Первая кандидатка получает 1, не проходит <code>ROWNUM &gt; 1</code>, следующая снова получает 1 — и так до конца. То же с <code>ROWNUM = 2</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l04-rownum-order",
+  "topic": "ROWNUM",
+  "q": "Хотели получить топ-3 зарплат. Что не так с этим запросом?",
+  "code": "SELECT emp_id, salary\n  FROM employees\n WHERE ROWNUM <= 3\n ORDER BY salary DESC;",
+  "opts": [
+   "ROWNUM считается до ORDER BY: берутся любые 3 строки, и только они сортируются",
+   "Ничего, запрос возвращает трёх самых высокооплачиваемых",
+   "Ошибка: ROWNUM нельзя использовать с ORDER BY",
+   "Вернутся три самые низкие зарплаты"
+  ],
+  "a": 0,
+  "why": "Сначала WHERE (и ROWNUM), потом ORDER BY. На наших данных вернутся 100, 101, 102 (6000), а Abdullaeva с 6500 потеряется. Правильно: отсортировать во вложенном запросе и ограничить снаружи, или <code>FETCH FIRST 3 ROWS ONLY</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l04-nulls-desc",
+  "topic": "NULL в сортировке",
+  "q": "Где окажутся сотрудники без комиссии при ORDER BY commission_pct DESC?",
+  "opts": [
+   "В начале результата",
+   "В конце результата",
+   "Их не будет в результате",
+   "Порядок для них не определён — где угодно"
+  ],
+  "a": 0,
+  "why": "Oracle считает NULL больше любого значения: при <code>ASC</code> они в конце, при <code>DESC</code> — в начале. Поменять можно через <code>NULLS LAST</code> / <code>NULLS FIRST</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l04-distinct-func",
+  "topic": "DISTINCT",
+  "q": "К чему применяется DISTINCT в этом запросе?",
+  "code": "SELECT DISTINCT(first_name), last_name\n  FROM employees;",
+  "opts": [
+   "Ко всей строке: уникальными должны быть пары (first_name, last_name)",
+   "Только к first_name, last_name выводится как есть",
+   "Это ошибка: DISTINCT нельзя писать со скобками",
+   "Только к last_name"
+  ],
+  "a": 0,
+  "why": "DISTINCT — не функция, а модификатор всего SELECT. Скобки вокруг <code>first_name</code> — просто скобки вокруг выражения. Результат — 19 уникальных пар: два Sardor Nazarov слились в одну строку.",
+  "section": "lessons"
+ },
+ {
+  "id": "l04-ties",
+  "topic": "FETCH FIRST",
+  "q": "Сколько строк вернёт запрос? Зарплаты по убыванию: 12000, 7000, 6500, 6000, 4100, 3900, 3200, 3200, 3100, …",
+  "code": "SELECT emp_id, salary\n  FROM employees\n ORDER BY salary DESC\n FETCH FIRST 7 ROWS WITH TIES;",
+  "opts": [
+   "8",
+   "7",
+   "9",
+   "Ошибку: WITH TIES требует PERCENT"
+  ],
+  "a": 0,
+  "why": "<code>WITH TIES</code> добавляет к первым 7 строкам все, у кого ключ сортировки равен значению 7-й строки (3200). Таких двое, поэтому 8.",
+  "section": "lessons"
+ },
+ {
+  "id": "l04-orderby-pos",
+  "topic": "ORDER BY",
+  "q": "Что произойдёт при выполнении запроса?",
+  "code": "SELECT emp_id, last_name\n  FROM employees\n ORDER BY 5;",
+  "opts": [
+   "Ошибка ORA-01785: номер в ORDER BY больше числа столбцов в SELECT",
+   "Сортировка по пятому столбцу таблицы employees (phone)",
+   "Сортировка будет проигнорирована",
+   "Сортировка по последнему столбцу SELECT"
+  ],
+  "a": 0,
+  "why": "Номер в <code>ORDER BY</code> — это позиция в списке SELECT, а не в таблице. В SELECT два столбца, поэтому 5 — ошибка.",
+  "section": "lessons"
+ },
+ {
+  "id": "l04-distinct-order",
+  "topic": "DISTINCT",
+  "q": "Что вернёт запрос?",
+  "code": "SELECT DISTINCT dept_id\n  FROM employees\n ORDER BY salary;",
+  "opts": [
+   "Ошибку ORA-01791: not a SELECTed expression",
+   "6 отделов, отсортированных по зарплате",
+   "20 строк — по одной на сотрудника",
+   "6 отделов в произвольном порядке"
+  ],
+  "a": 0,
+  "why": "После DISTINCT от каждой группы одинаковых dept_id остаётся одна строка, а зарплат у отдела много — по какой сортировать, непонятно. Без DISTINCT сортировать по столбцу не из SELECT можно.",
+  "section": "lessons"
+ },
+ {
+  "id": "l04-alias-where",
+  "topic": "Алиасы",
+  "q": "Почему этот запрос падает, а с ORDER BY annual работал бы?",
+  "code": "SELECT emp_id, salary * 12 AS annual\n  FROM employees\n WHERE annual > 50000;",
+  "opts": [
+   "WHERE выполняется раньше SELECT, и алиаса annual там ещё нет; ORDER BY — после SELECT",
+   "Алиасы в Oracle вообще нельзя использовать вне SELECT",
+   "Нужно писать алиас в двойных кавычках",
+   "salary * 12 нельзя сравнивать с числом"
+  ],
+  "a": 0,
+  "why": "Логический порядок: FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY. В WHERE пиши выражение целиком: <code>WHERE salary * 12 &gt; 50000</code>. Ошибка: <code>ORA-00904: \"ANNUAL\": invalid identifier</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l05-count",
+  "topic": "COUNT",
+  "q": "Что вернёт запрос на наших данных (20 сотрудников, комиссия у трёх, один без отдела)?",
+  "code": "SELECT COUNT(*), COUNT(commission_pct), COUNT(DISTINCT dept_id)\n  FROM employees;",
+  "opts": [
+   "20, 3, 5",
+   "20, 20, 6",
+   "20, 3, 6",
+   "3, 3, 5"
+  ],
+  "a": 0,
+  "why": "<code>COUNT(*)</code> считает строки, <code>COUNT(col)</code> — только не-NULL, <code>COUNT(DISTINCT col)</code> — разные не-NULL значения. NULL-отдел сотрудника 152 в DISTINCT не считается.",
+  "section": "lessons"
+ },
+ {
+  "id": "l05-avg-null",
+  "topic": "AVG и NULL",
+  "q": "Комиссия есть у троих: 0.15, 0.2, 0.1; у остальных 17 — NULL. Что вернут AVG(commission_pct) и AVG(NVL(commission_pct, 0))?",
+  "opts": [
+   "0.15 и 0.0225",
+   "0.0225 и 0.0225",
+   "0.15 и 0.15",
+   "NULL и 0.0225"
+  ],
+  "a": 0,
+  "why": "<code>AVG</code> пропускает NULL и делит 0.45 на 3. С <code>NVL</code> NULL-ов нет, и 0.45 делится на 20. Что из этого «правильная средняя» — зависит от вопроса бизнеса, но разницу нужно понимать.",
+  "section": "lessons"
+ },
+ {
+  "id": "l05-empty",
+  "topic": "Агрегаты",
+  "q": "Что вернёт запрос для отдела HR, в котором нет сотрудников?",
+  "code": "SELECT SUM(salary), COUNT(*)\n  FROM employees\n WHERE dept_id = 60;",
+  "opts": [
+   "Одну строку: NULL и 0",
+   "Ни одной строки",
+   "Одну строку: 0 и 0",
+   "Ошибку NO_DATA_FOUND"
+  ],
+  "a": 0,
+  "why": "Агрегат без GROUP BY всегда возвращает ровно одну строку, даже по пустому набору. <code>SUM</code> по пустому набору — NULL, <code>COUNT</code> — 0. А вот с <code>GROUP BY dept_id</code> строк было бы ноль.",
+  "section": "lessons"
+ },
+ {
+  "id": "l05-group-col",
+  "topic": "GROUP BY",
+  "q": "Что произойдёт?",
+  "code": "SELECT dept_id, last_name, COUNT(*)\n  FROM employees\n GROUP BY dept_id;",
+  "opts": [
+   "Ошибка ORA-00979: last_name не в GROUP BY и не в агрегате",
+   "Вернётся первая фамилия каждого отдела",
+   "Вернётся по строке на сотрудника",
+   "Вернётся последняя фамилия по алфавиту"
+  ],
+  "a": 0,
+  "why": "В группе отдела 10 семь фамилий — Oracle не угадывает, какую показать. Либо добавь <code>last_name</code> в GROUP BY, либо оберни в агрегат (<code>MAX</code>, <code>LISTAGG</code>).",
+  "section": "lessons"
+ },
+ {
+  "id": "l05-where-agg",
+  "topic": "WHERE и HAVING",
+  "q": "Почему запрос падает с ORA-00934?",
+  "code": "SELECT dept_id\n  FROM employees\n WHERE COUNT(*) > 3\n GROUP BY dept_id;",
+  "opts": [
+   "WHERE выполняется до группировки, там агрегатов ещё нет — условие нужно в HAVING",
+   "COUNT(*) нельзя сравнивать с числом",
+   "Перед GROUP BY нельзя писать WHERE",
+   "Нужно писать COUNT(dept_id)"
+  ],
+  "a": 0,
+  "why": "WHERE фильтрует строки, HAVING — группы. Правильно: <code>GROUP BY dept_id HAVING COUNT(*) &gt; 3</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l05-null-group",
+  "topic": "GROUP BY",
+  "q": "Сколько строк вернёт SELECT dept_id, COUNT(*) FROM employees GROUP BY dept_id? (отделы 10–50 заполнены, один сотрудник без отдела, отдел 60 пустой)",
+  "opts": [
+   "6",
+   "5",
+   "7",
+   "Ошибку из-за NULL"
+  ],
+  "a": 0,
+  "why": "NULL образует свою группу — это шестая строка. Пустой отдел 60 не появится: GROUP BY работает по строкам employees, а там его нет. Чтобы увидеть HR с нулём — LEFT JOIN от departments.",
+  "section": "lessons"
+ },
+ {
+  "id": "l05-order",
+  "topic": "Порядок выполнения",
+  "q": "В каком логическом порядке Oracle выполняет части запроса?",
+  "opts": [
+   "FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY",
+   "SELECT → FROM → WHERE → GROUP BY → HAVING → ORDER BY",
+   "FROM → SELECT → WHERE → GROUP BY → ORDER BY → HAVING",
+   "FROM → GROUP BY → WHERE → HAVING → SELECT → ORDER BY"
+  ],
+  "a": 0,
+  "why": "Отсюда все правила: алиас из SELECT не виден в WHERE (и до 23ai — в GROUP BY/HAVING), но виден в ORDER BY; агрегаты нельзя в WHERE, потому что групп ещё нет.",
+  "section": "lessons"
+ },
+ {
+  "id": "l05-grouping",
+  "topic": "ROLLUP",
+  "q": "Зачем в отчёте с ROLLUP(dept_id) функция GROUPING(dept_id)?",
+  "opts": [
+   "Отличить итоговую строку от обычной группы, где dept_id тоже NULL",
+   "Без неё ROLLUP не посчитает итог",
+   "Она сортирует группы по dept_id",
+   "Она убирает NULL-группу из результата"
+  ],
+  "a": 0,
+  "why": "В строке итога dept_id = NULL. У нас есть и настоящая группа с NULL (сотрудник 152). <code>GROUPING</code> вернёт 1 только для итога, а для группы 152 — 0.",
+  "section": "lessons"
+ },
+ {
+  "id": "l06-inner-lost",
+  "topic": "INNER JOIN",
+  "q": "Сколько строк вернёт запрос? (20 сотрудников, у одного dept_id NULL; 6 отделов, в HR никого)",
+  "code": "SELECT COUNT(*)\n  FROM employees e\n  JOIN departments d ON d.dept_id = e.dept_id;",
+  "opts": [
+   "19",
+   "20",
+   "21",
+   "26"
+  ],
+  "a": 0,
+  "why": "INNER JOIN оставляет только пары, для которых условие ON истинно. <code>NULL = 10</code> — не истина, поэтому сотрудник 152 пропадает. HR тоже не попадает, но он и не добавил бы строк.",
+  "section": "lessons"
+ },
+ {
+  "id": "l06-left-where",
+  "topic": "LEFT JOIN",
+  "q": "Сколько строк вернёт запрос? (10 клиентов, NEW-заказы есть у троих)",
+  "code": "SELECT c.cust_name, o.order_id\n  FROM customers c\n  LEFT JOIN orders o ON o.cust_id = c.cust_id\n WHERE o.status = 'NEW';",
+  "opts": [
+   "3 — фильтр в WHERE превратил LEFT JOIN во внутренний",
+   "10 — LEFT JOIN сохраняет всех клиентов",
+   "21",
+   "7 — клиенты без NEW-заказов"
+  ],
+  "a": 0,
+  "why": "У клиентов без пары <code>o.status</code> — NULL, а <code>NULL = 'NEW'</code> не истинно, и WHERE их выкидывает. Чтобы сохранить всех клиентов, условие на правую таблицу пишут в <code>ON</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l06-count-left",
+  "topic": "LEFT JOIN",
+  "q": "Что вернут COUNT(*) и COUNT(o.order_id) для клиента Kappa Textile, у которого нет заказов?",
+  "code": "SELECT c.cust_name, COUNT(*), COUNT(o.order_id)\n  FROM customers c\n  LEFT JOIN orders o ON o.cust_id = c.cust_id\n GROUP BY c.cust_name;",
+  "opts": [
+   "1 и 0",
+   "0 и 0",
+   "1 и 1",
+   "NULL и 0"
+  ],
+  "a": 0,
+  "why": "LEFT JOIN оставляет для Kappa одну строку с NULL в столбцах orders. <code>COUNT(*)</code> считает эту строку, <code>COUNT(o.order_id)</code> пропускает NULL. Частая ошибка в отчётах «число заказов клиента».",
+  "section": "lessons"
+ },
+ {
+  "id": "l06-cross",
+  "topic": "CROSS JOIN",
+  "q": "Сколько строк вернёт запрос (20 сотрудников, 6 отделов)?",
+  "code": "SELECT COUNT(*)\n  FROM employees, departments;",
+  "opts": [
+   "120",
+   "20",
+   "26",
+   "Ошибку: нет условия соединения"
+  ],
+  "a": 0,
+  "why": "Таблицы через запятую без условия в WHERE — декартово произведение, то же, что <code>CROSS JOIN</code>: каждая из 20 строк с каждой из 6.",
+  "section": "lessons"
+ },
+ {
+  "id": "l06-ambiguous",
+  "topic": "JOIN",
+  "q": "Что произойдёт?",
+  "code": "SELECT dept_id, last_name\n  FROM employees e\n  JOIN departments d ON d.dept_id = e.dept_id;",
+  "opts": [
+   "Ошибка ORA-00918: dept_id есть в обеих таблицах, нужен алиас",
+   "Oracle возьмёт dept_id из первой таблицы",
+   "Вернутся два столбца dept_id",
+   "Запрос выполнится, но dept_id будет NULL"
+  ],
+  "a": 0,
+  "why": "Если имя столбца встречается в нескольких таблицах запроса, его нужно уточнить: <code>e.dept_id</code> или <code>d.dept_id</code>. Исключение — <code>JOIN … USING (dept_id)</code>: там общий столбец пишется без алиаса.",
+  "section": "lessons"
+ },
+ {
+  "id": "l06-plus-side",
+  "topic": "Синтаксис (+)",
+  "q": "Какая таблица сохраняется полностью в этом запросе?",
+  "code": "SELECT d.dept_name, e.last_name\n  FROM departments d, employees e\n WHERE e.dept_id(+) = d.dept_id;",
+  "opts": [
+   "departments — (+) стоит у employees, значит строк сотрудников может не быть",
+   "employees — (+) означает «эта таблица главная»",
+   "Обе — это FULL JOIN",
+   "Ни одна — это INNER JOIN"
+  ],
+  "a": 0,
+  "why": "<code>(+)</code> ставится у столбцов «необязательной» таблицы — той, где пары может не оказаться. Это эквивалент <code>departments d LEFT JOIN employees e</code>: HR попадёт с NULL.",
+  "section": "lessons"
+ },
+ {
+  "id": "l06-plus-filter",
+  "topic": "Синтаксис (+)",
+  "q": "Почему HR, Support и Analytics пропали из результата?",
+  "code": "SELECT d.dept_name, e.last_name\n  FROM departments d, employees e\n WHERE e.dept_id(+) = d.dept_id\n   AND e.salary > 5000;",
+  "opts": [
+   "У e.salary > 5000 нет (+), и фильтр применился после соединения — как WHERE для LEFT JOIN",
+   "В этих отделах никто не получает больше 5000 — так и должно быть для LEFT JOIN",
+   "(+) работает только с одним условием в запросе",
+   "Старый синтаксис не поддерживает внешние соединения"
+  ],
+  "a": 0,
+  "why": "Это та же ловушка, что «условие в WHERE вместо ON». Правильно — <code>AND e.salary(+) &gt; 5000</code>: тогда условие участвует в соединении, и вернутся 7 строк со всеми отделами.",
+  "section": "lessons"
+ },
+ {
+  "id": "l06-self",
+  "topic": "Self-join",
+  "q": "Сколько строк вернёт self-join сотрудник–менеджер через INNER JOIN?",
+  "code": "SELECT e.last_name, m.last_name AS manager\n  FROM employees e\n  JOIN employees m ON m.emp_id = e.manager_id;",
+  "opts": [
+   "19 — директор без manager_id пропадёт",
+   "20",
+   "21",
+   "400"
+  ],
+  "a": 0,
+  "why": "У директора 100 <code>manager_id</code> — NULL, пары нет, INNER JOIN его выбросит. Чтобы показать всех — <code>LEFT JOIN employees m</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l07-notin-null",
+  "topic": "NOT IN",
+  "q": "Что вернёт этот запрос? (у заказа 9008 emp_id = NULL)",
+  "code": "SELECT emp_id\n  FROM employees\n WHERE emp_id NOT IN (SELECT emp_id FROM orders);",
+  "opts": [
+   "0 строк",
+   "17 сотрудников без заказов",
+   "Ошибку ORA-01427",
+   "Все 20 сотрудников"
+  ],
+  "a": 0,
+  "why": "<code>NOT IN</code> разворачивается в <code>emp_id &lt;&gt; 130 AND emp_id &lt;&gt; 131 AND ... AND emp_id &lt;&gt; NULL</code>. Последнее сравнение — UNKNOWN, и всё условие не бывает TRUE ни для одной строки. Лечится <code>WHERE emp_id IS NOT NULL</code> в подзапросе или <code>NOT EXISTS</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l07-notexists",
+  "topic": "NOT EXISTS",
+  "q": "А этот запрос на тех же данных?",
+  "code": "SELECT e.emp_id\n  FROM employees e\n WHERE NOT EXISTS (SELECT 1 FROM orders o\n                    WHERE o.emp_id = e.emp_id);",
+  "opts": [
+   "17 строк — сотрудники без заказов",
+   "0 строк — мешает NULL у заказа 9008",
+   "Ошибку: подзапрос ничего не выбирает",
+   "20 строк"
+  ],
+  "a": 0,
+  "why": "<code>NOT EXISTS</code> проверяет, есть ли строка, удовлетворяющая условию. Строка заказа с <code>emp_id = NULL</code> не совпадёт ни с одним сотрудником и ничему не мешает. Поэтому для «у кого нет …» безопаснее <code>NOT EXISTS</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l07-ora-01427",
+  "topic": "Скалярный подзапрос",
+  "q": "Что произойдёт?",
+  "code": "SELECT emp_id\n  FROM employees\n WHERE salary = (SELECT salary FROM employees WHERE dept_id = 20);",
+  "opts": [
+   "Ошибка ORA-01427: single-row subquery returns more than one row",
+   "Вернутся сотрудники с зарплатой, как у любого из отдела 20",
+   "Подзапрос возьмёт первую строку отдела 20",
+   "Вернётся 0 строк"
+  ],
+  "a": 0,
+  "why": "Знак <code>=</code> ждёт одно значение, а в отделе 20 четыре сотрудника. Oracle не выбирает «первую попавшуюся», а падает. Нужен <code>IN</code> или агрегат (<code>MAX</code>, <code>AVG</code>).",
+  "section": "lessons"
+ },
+ {
+  "id": "l07-scalar-empty",
+  "topic": "Скалярный подзапрос",
+  "q": "Сотрудника 999 нет. Что вернёт запрос?",
+  "code": "SELECT (SELECT salary FROM employees WHERE emp_id = 999) AS s\n  FROM dual;",
+  "opts": [
+   "Одну строку со значением NULL",
+   "0 строк",
+   "Ошибку ORA-01403: no data found",
+   "Одну строку со значением 0"
+  ],
+  "a": 0,
+  "why": "Скалярный подзапрос без строк даёт NULL, ошибки нет. <code>ORA-01403</code> — это ошибка PL/SQL-конструкции <code>SELECT INTO</code>, в SQL её не бывает.",
+  "section": "lessons"
+ },
+ {
+  "id": "l07-agg-where",
+  "topic": "Подзапрос в WHERE",
+  "q": "Почему этот запрос не работает?",
+  "code": "SELECT emp_id\n  FROM employees\n WHERE salary > AVG(salary);",
+  "opts": [
+   "Агрегатные функции нельзя использовать в WHERE — нужен подзапрос (SELECT AVG(salary) FROM employees)",
+   "Нужно написать AVG(salary) в HAVING без GROUP BY — тогда сработает",
+   "AVG не работает с NUMBER(9,2)",
+   "Нужно добавить DISTINCT"
+  ],
+  "a": 0,
+  "why": "WHERE фильтрует отдельные строки до группировки, а агрегат считается по группе — отсюда <code>ORA-00934: group function is not allowed here</code>. Среднее надо посчитать отдельно, скалярным подзапросом: <code>WHERE salary &gt; (SELECT AVG(salary) FROM employees)</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l07-alias-where",
+  "topic": "Inline view",
+  "q": "Почему запрос падает с ORA-00904: \"ANNUAL\": invalid identifier?",
+  "code": "SELECT salary * 12 AS annual\n  FROM employees\n WHERE annual > 50000;",
+  "opts": [
+   "WHERE выполняется раньше SELECT, поэтому псевдоним annual там ещё не существует",
+   "Псевдонимы нельзя писать через AS",
+   "Нельзя умножать столбец на число в SELECT",
+   "Псевдоним должен быть в двойных кавычках"
+  ],
+  "a": 0,
+  "why": "Логический порядок: FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY. Псевдоним из SELECT виден только в ORDER BY. Решение — inline view: <code>SELECT * FROM (SELECT salary*12 AS annual FROM employees) WHERE annual &gt; 50000</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l07-correlated-null",
+  "topic": "Коррелированный подзапрос",
+  "q": "Попадёт ли в результат сотрудник 152, у которого dept_id = NULL?",
+  "code": "SELECT e.emp_id\n  FROM employees e\n WHERE e.salary > (SELECT AVG(e2.salary)\n                     FROM employees e2\n                    WHERE e2.dept_id = e.dept_id);",
+  "opts": [
+   "Нет: для него подзапрос вернёт NULL, а сравнение с NULL — UNKNOWN",
+   "Да: его сравнят со средней по всей компании",
+   "Да: его сравнят со средней по сотрудникам без отдела",
+   "Запрос упадёт с ошибкой на этой строке"
+  ],
+  "a": 0,
+  "why": "Для 152 условие <code>e2.dept_id = NULL</code> не находит ни одной строки, <code>AVG</code> по пустому набору — NULL, а <code>2500 &gt; NULL</code> — UNKNOWN. Строки с NULL в столбце связи молча выпадают.",
+  "section": "lessons"
+ },
+ {
+  "id": "l07-exists-null",
+  "topic": "EXISTS",
+  "q": "Сколько строк вернёт COUNT(*)? (заказы есть у 9 клиентов из 10)",
+  "code": "SELECT COUNT(*)\n  FROM customers c\n WHERE EXISTS (SELECT NULL FROM orders o\n                WHERE o.cust_id = c.cust_id);",
+  "opts": [
+   "9",
+   "0 — подзапрос выбирает NULL",
+   "10",
+   "Ошибку: в EXISTS нельзя выбирать NULL"
+  ],
+  "a": 0,
+  "why": "EXISTS проверяет только факт наличия строки, а не её значения. <code>SELECT NULL</code>, <code>SELECT 1</code> или <code>SELECT *</code> внутри EXISTS работают одинаково.",
+  "section": "lessons"
+ },
+ {
+  "id": "l08-union-null",
+  "topic": "UNION",
+  "q": "Сколько строк вернёт запрос?",
+  "code": "SELECT 1 FROM dual\nUNION\nSELECT NULL FROM dual\nUNION\nSELECT NULL FROM dual;",
+  "opts": [
+   "2",
+   "3",
+   "1",
+   "Ошибку: NULL нельзя объединять с числом"
+  ],
+  "a": 0,
+  "why": "UNION убирает дубли и при этом считает NULL равными друг другу: две строки NULL схлопываются в одну. Остаются 1 и NULL. С <code>UNION ALL</code> было бы 3 строки.",
+  "section": "lessons"
+ },
+ {
+  "id": "l08-union-order",
+  "topic": "UNION",
+  "q": "Гарантирует ли UNION, что результат будет отсортирован?",
+  "opts": [
+   "Нет: порядок без ORDER BY не гарантирован, в 23ai UNION часто выдаёт строки вперемешку",
+   "Да, UNION всегда сортирует по первому столбцу",
+   "Да, но только для чисел",
+   "Нет, UNION всегда возвращает строки в порядке вставки"
+  ],
+  "a": 0,
+  "why": "Чтобы убрать дубли, Oracle раньше сортировал, и результат «случайно» выходил по порядку. Сейчас чаще используется хэширование, и порядка нет. Единственная гарантия порядка — <code>ORDER BY</code> в конце.",
+  "section": "lessons"
+ },
+ {
+  "id": "l08-union-all-count",
+  "topic": "UNION ALL",
+  "q": "У 10 клиентов город заполнен, у 6 отделов в location 5 значений и один NULL. Сколько строк вернёт запрос?",
+  "code": "SELECT city FROM customers\nUNION ALL\nSELECT location FROM departments;",
+  "opts": [
+   "16",
+   "9",
+   "8",
+   "15"
+  ],
+  "a": 0,
+  "why": "<code>UNION ALL</code> ничего не убирает — ни дубли, ни NULL: 10 + 6 = 16. С <code>UNION</code> было бы 9 (8 разных городов и NULL).",
+  "section": "lessons"
+ },
+ {
+  "id": "l08-datatype",
+  "topic": "Правила",
+  "q": "Что вернёт запрос?",
+  "code": "SELECT 'a' FROM dual\nUNION\nSELECT 1 FROM dual;",
+  "opts": [
+   "Ошибку ORA-01790: типы столбцов не совпадают",
+   "Две строки: 'a' и '1'",
+   "Две строки: 'a' и 1",
+   "Одну строку 'a'"
+  ],
+  "a": 0,
+  "why": "Столбцы сопоставляются по позиции, и типы должны совпадать: строка и число — ошибка. Неявного приведения здесь нет. Чини явно: <code>SELECT TO_CHAR(1) FROM dual</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l08-names",
+  "topic": "Правила",
+  "q": "Как будут называться столбцы результата?",
+  "code": "SELECT emp_id AS id, first_name AS name FROM employees\nUNION ALL\nSELECT cust_id AS code, cust_name AS title FROM customers;",
+  "opts": [
+   "ID и NAME",
+   "CODE и TITLE",
+   "ID/CODE и NAME/TITLE",
+   "Ошибка: псевдонимы должны совпадать"
+  ],
+  "a": 0,
+  "why": "Имена столбцов берутся из первого запроса. Псевдонимы второго ни на что не влияют, и в ORDER BY по ним сортировать нельзя: <code>ORDER BY code</code> даст <code>ORA-00904</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l08-orderby",
+  "topic": "ORDER BY",
+  "q": "Что произойдёт?",
+  "code": "SELECT first_name FROM employees\n ORDER BY first_name\nUNION ALL\nSELECT cust_name FROM customers;",
+  "opts": [
+   "Синтаксическая ошибка: ORDER BY можно писать только в конце всего составного запроса",
+   "Отсортируется только первая часть, вторая допишется как есть",
+   "ORDER BY применится ко всему результату",
+   "ORDER BY будет проигнорирован"
+  ],
+  "a": 0,
+  "why": "ORDER BY сортирует итоговый результат и стоит один раз в самом конце. В 23ai это <code>ORA-03048</code>, в старых версиях — <code>ORA-00933: SQL command not properly ended</code>. Отсортировать часть можно только внутри подзапроса в скобках.",
+  "section": "lessons"
+ },
+ {
+  "id": "l08-precedence",
+  "topic": "Приоритет",
+  "q": "Что вернёт запрос?",
+  "code": "SELECT 1 FROM dual\nUNION\nSELECT 2 FROM dual\nINTERSECT\nSELECT 2 FROM dual;",
+  "opts": [
+   "Одну строку: 2",
+   "Две строки: 1 и 2",
+   "Одну строку: 1",
+   "Ошибку: нужны скобки"
+  ],
+  "a": 0,
+  "why": "В Oracle UNION, INTERSECT и MINUS равноправны и выполняются слева направо: <code>(1 UNION 2) INTERSECT 2</code> = 2. По стандарту SQL INTERSECT старше и ответ был бы 1 и 2 — поэтому в смешанных выражениях всегда ставь скобки.",
+  "section": "lessons"
+ },
+ {
+  "id": "l08-minus-null",
+  "topic": "MINUS",
+  "q": "У директора manager_id = NULL. Сколько строк вернёт запрос (всего 20 сотрудников, руководителей 6)?",
+  "code": "SELECT emp_id FROM employees\nMINUS\nSELECT manager_id FROM employees;",
+  "opts": [
+   "14",
+   "0",
+   "20",
+   "6"
+  ],
+  "a": 0,
+  "why": "Для операций над множествами NULL — обычное значение, которое ничему не мешает. А вот <code>emp_id NOT IN (SELECT manager_id FROM employees)</code> на тех же данных вернёт 0 строк из-за NULL. Это частый вопрос: «чем MINUS отличается от NOT IN».",
+  "section": "lessons"
+ },
+ {
+  "id": "l09-update-no-where",
+  "topic": "UPDATE",
+  "q": "Сколько строк изменит команда в dml_emp (20 сотрудников, Sales Rep — трое)?",
+  "code": "UPDATE dml_emp SET salary = salary * 1.1;",
+  "opts": [
+   "20 — без WHERE меняются все строки",
+   "3 — Oracle сам поймёт, что речь о Sales Rep",
+   "0 — без WHERE UPDATE не выполняется",
+   "Ошибку: UPDATE требует WHERE"
+  ],
+  "a": 0,
+  "why": "UPDATE и DELETE без WHERE работают по всей таблице, и Oracle не переспрашивает. Перед UPDATE полезно выполнить <code>SELECT</code> с тем же WHERE и проверить, какие строки попадут.",
+  "section": "lessons"
+ },
+ {
+  "id": "l09-delete-null",
+  "topic": "DELETE",
+  "q": "Сколько строк удалит команда, если у сотрудника 152 dept_id = NULL?",
+  "code": "DELETE FROM dml_emp WHERE dept_id = NULL;",
+  "opts": [
+   "0",
+   "1",
+   "Все строки",
+   "Ошибку ORA-01722"
+  ],
+  "a": 0,
+  "why": "<code>dept_id = NULL</code> — всегда UNKNOWN, ни одна строка не подходит. Ошибки нет, просто «0 rows deleted». Правильно: <code>WHERE dept_id IS NULL</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l09-savepoint",
+  "topic": "SAVEPOINT",
+  "q": "Сколько строк останется в dml_emp_arch (до начала она пустая)?",
+  "code": "INSERT INTO dml_emp_arch (emp_id) VALUES (1);\nSAVEPOINT a;\nINSERT INTO dml_emp_arch (emp_id) VALUES (2);\nROLLBACK TO a;\nCOMMIT;",
+  "opts": [
+   "1",
+   "0",
+   "2",
+   "Ошибка: после ROLLBACK TO нельзя делать COMMIT"
+  ],
+  "a": 0,
+  "why": "<code>ROLLBACK TO a</code> отменяет только то, что было после метки, — второй INSERT. Транзакция продолжается, и COMMIT фиксирует первый INSERT.",
+  "section": "lessons"
+ },
+ {
+  "id": "l09-ddl-commit",
+  "topic": "Транзакции",
+  "q": "Что будет с повышением зарплаты после этих команд?",
+  "code": "UPDATE dml_emp SET salary = salary + 1000 WHERE emp_id = 110;\nCREATE TABLE dml_tmp_demo (x NUMBER);\nROLLBACK;",
+  "opts": [
+   "Сохранится: CREATE TABLE сделал неявный COMMIT, ROLLBACK откатывать нечего",
+   "Откатится: ROLLBACK отменяет всё до начала сессии",
+   "Откатится вместе с созданием таблицы",
+   "Ошибка: нельзя делать DDL посреди транзакции"
+  ],
+  "a": 0,
+  "why": "Любая DDL-команда выполняет COMMIT до и после себя. Изменения, сделанные до неё, фиксируются. Поэтому DDL посреди «рабочей» транзакции — классический источник сюрпризов.",
+  "section": "lessons"
+ },
+ {
+  "id": "l09-truncate",
+  "topic": "TRUNCATE",
+  "q": "Чем TRUNCATE TABLE отличается от DELETE без WHERE?",
+  "opts": [
+   "TRUNCATE — DDL: быстро, без WHERE, с неявным COMMIT, откатить нельзя; DELETE — DML, откатывается ROLLBACK",
+   "Ничем, это синонимы",
+   "TRUNCATE удаляет таблицу вместе со структурой",
+   "DELETE нельзя откатить, а TRUNCATE можно"
+  ],
+  "a": 0,
+  "why": "TRUNCATE не удаляет строки по одной и почти не пишет undo, поэтому он мгновенный, но ROLLBACK его не отменит. DML-триггеры на DELETE при TRUNCATE не срабатывают. Структура таблицы остаётся — её удаляет <code>DROP</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l09-drop",
+  "topic": "DROP",
+  "q": "Таблицу удалили командой DROP TABLE dml_emp (без PURGE). Можно ли её вернуть?",
+  "opts": [
+   "Да, из корзины: FLASHBACK TABLE dml_emp TO BEFORE DROP",
+   "Да, командой ROLLBACK",
+   "Нет, DROP необратим всегда",
+   "Да, но только данные, без структуры"
+  ],
+  "a": 0,
+  "why": "DROP — DDL с неявным COMMIT, ROLLBACK не поможет. Но по умолчанию таблица уходит в корзину (<code>USER_RECYCLEBIN</code>), и <code>FLASHBACK TABLE ... TO BEFORE DROP</code> её вернёт. <code>DROP TABLE ... PURGE</code> удаляет сразу и навсегда.",
+  "section": "lessons"
+ },
+ {
+  "id": "l09-set-null",
+  "topic": "UPDATE",
+  "q": "В dml_emp столбец commission_pct может быть NULL. Что случится с сотрудниками, у которых нет заказов?",
+  "code": "UPDATE dml_emp e\n   SET commission_pct = (SELECT MAX(0.05)\n                           FROM orders o\n                          WHERE o.emp_id = e.emp_id);",
+  "opts": [
+   "Их commission_pct станет NULL — MAX по пустому набору даёт NULL",
+   "Их не тронут: UPDATE пропускает строки без пары",
+   "Их commission_pct станет 0",
+   "Запрос упадёт с ORA-01427"
+  ],
+  "a": 0,
+  "why": "UPDATE без WHERE проходит по всем строкам, а подзапрос для сотрудника без заказов даёт NULL. Значение у 17 сотрудников молча затрётся. Добавь <code>WHERE EXISTS (SELECT 1 FROM orders o WHERE o.emp_id = e.emp_id)</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l09-merge-on",
+  "topic": "MERGE",
+  "q": "Что произойдёт при выполнении MERGE?",
+  "code": "MERGE INTO dml_prod p\nUSING dml_price_list l\n   ON (p.prod_id = l.prod_id)\n WHEN MATCHED THEN UPDATE SET p.prod_id = l.prod_id;",
+  "opts": [
+   "Ошибка ORA-38104: столбцы из ON нельзя обновлять",
+   "prod_id обновится у совпавших строк",
+   "MERGE выполнится, но ничего не изменит",
+   "Ошибка: у MERGE обязательно должна быть ветка WHEN NOT MATCHED"
+  ],
+  "a": 0,
+  "why": "Условие ON решает, какая строка «совпала». Если позволить менять столбцы из ON, совпадение поменялось бы прямо во время работы, поэтому Oracle запрещает это сразу. Ветки MATCHED и NOT MATCHED необязательны — можно оставить одну.",
+  "section": "lessons"
+ },
+ {
+  "id": "l10-unique-null",
+  "topic": "Ограничения",
+  "q": "В ddl_staff на email стоит UNIQUE. Что будет при вставке двух сотрудников с email = NULL?",
+  "opts": [
+   "Обе строки вставятся",
+   "Вторая упадёт с ORA-00001",
+   "Первая упадёт с ORA-01400",
+   "Вставится одна, вторая молча пропустится"
+  ],
+  "a": 0,
+  "why": "UNIQUE сравнивает значения через равенство, а <code>NULL = NULL</code> — не TRUE. Поэтому NULL-ов в уникальном столбце может быть сколько угодно. Запретить пустые значения — отдельный <code>NOT NULL</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l10-check-null",
+  "topic": "Ограничения",
+  "q": "На столбце стоит CHECK (salary > 0), NOT NULL нет. Что будет при INSERT с salary = NULL?",
+  "opts": [
+   "Строка вставится",
+   "ORA-02290: check constraint violated",
+   "ORA-01400: cannot insert NULL",
+   "Oracle подставит 0"
+  ],
+  "a": 0,
+  "why": "Для NULL условие <code>salary &gt; 0</code> даёт UNKNOWN, а CHECK отклоняет только FALSE. Поэтому CHECK почти всегда идёт в паре с <code>NOT NULL</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l10-ddl-commit",
+  "topic": "DDL",
+  "q": "Что останется в ddl_projects после такой последовательности команд в одной сессии?",
+  "code": "INSERT INTO ddl_projects (project_id) VALUES (1);\nCREATE TABLE ddl_tmp_x (id NUMBER);\nROLLBACK;",
+  "opts": [
+   "Строка с id 1 — DDL сделал неявный COMMIT",
+   "Ничего — ROLLBACK откатил INSERT",
+   "Ошибка: нельзя делать DDL в открытой транзакции",
+   "Строка останется, но ddl_tmp_x не создастся"
+  ],
+  "a": 0,
+  "why": "Любая DDL-команда в Oracle выполняет COMMIT перед собой и после себя. ROLLBACK уже нечего откатывать. Поэтому DDL внутри транзакционной логики — источник неприятных сюрпризов.",
+  "section": "lessons"
+ },
+ {
+  "id": "l10-seq-rollback",
+  "topic": "SEQUENCE",
+  "q": "s.NEXTVAL вернул 120 внутри INSERT, затем был ROLLBACK. Что вернёт следующий s.NEXTVAL (шаг 10)?",
+  "opts": [
+   "130",
+   "120",
+   "110",
+   "Ошибку ORA-08002"
+  ],
+  "a": 0,
+  "why": "Последовательность работает вне транзакций: выданное число не возвращается при ROLLBACK. Поэтому в ключах из sequence бывают дыры, и это нормально — требовать «номера без пропусков» от sequence нельзя.",
+  "section": "lessons"
+ },
+ {
+  "id": "l10-seq-two-nextval",
+  "topic": "SEQUENCE",
+  "q": "Последний выданный номер — 100, шаг 10. Что вернёт запрос?",
+  "code": "SELECT s.NEXTVAL, s.NEXTVAL FROM dual;",
+  "opts": [
+   "110 и 110",
+   "110 и 120",
+   "100 и 110",
+   "Ошибку: NEXTVAL нельзя дважды"
+  ],
+  "a": 0,
+  "why": "<code>NEXTVAL</code> увеличивается один раз на строку результата, сколько бы раз его ни упомянули в этой строке. Поэтому оба столбца равны.",
+  "section": "lessons"
+ },
+ {
+  "id": "l10-fk-index",
+  "topic": "Индексы",
+  "q": "Какой индекс Oracle НЕ создаёт автоматически?",
+  "opts": [
+   "На столбце внешнего ключа",
+   "Для PRIMARY KEY",
+   "Для UNIQUE",
+   "Для PRIMARY KEY, добавленного через ALTER TABLE"
+  ],
+  "a": 0,
+  "why": "PK и UNIQUE проверяются через индекс, поэтому Oracle создаёт его сам. Под FOREIGN KEY — нет. Без такого индекса удаление или изменение ключа родителя полностью просматривает дочернюю таблицу и блокирует её.",
+  "section": "lessons"
+ },
+ {
+  "id": "l10-fbi",
+  "topic": "Индексы",
+  "q": "На employees(last_name) есть обычный индекс. Будет ли он использован для WHERE UPPER(last_name) = 'NAZAROV'?",
+  "opts": [
+   "Нет — нужен функциональный индекс по UPPER(last_name)",
+   "Да, Oracle сам применит UPPER к индексу",
+   "Да, если таблица большая",
+   "Нет, UPPER вообще нельзя индексировать"
+  ],
+  "a": 0,
+  "why": "В индексе лежат значения <code>last_name</code>, а в условии — <code>UPPER(last_name)</code>, это другие значения. Решение — функциональный индекс <code>CREATE INDEX … ON employees (UPPER(last_name))</code> по ровно тому же выражению.",
+  "section": "lessons"
+ },
+ {
+  "id": "l10-view-star",
+  "topic": "VIEW",
+  "q": "View создано как SELECT * FROM ddl_projects. Потом в ddl_projects добавили столбец. Что покажет SELECT * FROM view?",
+  "opts": [
+   "Старые столбцы, без нового",
+   "Все столбцы, включая новый",
+   "Ошибку: view стало INVALID навсегда",
+   "Пустой результат"
+  ],
+  "a": 0,
+  "why": "Звёздочка раскрывается в список столбцов при создании view. Чтобы новый столбец появился, view нужно пересоздать (<code>CREATE OR REPLACE VIEW</code>). Поэтому в view лучше перечислять столбцы явно.",
+  "section": "lessons"
+ },
+ {
+  "id": "l11-rows-count",
+  "topic": "Аналитика",
+  "q": "Сколько строк вернёт запрос?",
+  "code": "SELECT dept_id, COUNT(*) OVER (PARTITION BY dept_id)\n  FROM employees;",
+  "opts": [
+   "20 — по строке на сотрудника",
+   "6 — по строке на отдел",
+   "1",
+   "Ошибку: нет GROUP BY"
+  ],
+  "a": 0,
+  "why": "Аналитическая функция не схлопывает строки, как GROUP BY: каждая строка остаётся и получает число сотрудников своего отдела. Строк столько же, сколько в employees, — 20.",
+  "section": "lessons"
+ },
+ {
+  "id": "l11-where",
+  "topic": "Аналитика",
+  "q": "Почему этот запрос падает с ORA-30483?",
+  "code": "SELECT emp_id\n  FROM employees\n WHERE ROW_NUMBER() OVER (ORDER BY salary DESC) <= 3;",
+  "opts": [
+   "Аналитика вычисляется после WHERE — фильтровать по ней можно только во внешнем запросе",
+   "Нужно добавить GROUP BY",
+   "ROW_NUMBER требует PARTITION BY",
+   "В ORDER BY внутри OVER нельзя писать DESC"
+  ],
+  "a": 0,
+  "why": "Порядок выполнения: FROM → WHERE → GROUP BY → HAVING → аналитика → ORDER BY. На этапе WHERE номеров ещё нет. Решение — подзапрос: <code>SELECT * FROM (SELECT …, ROW_NUMBER() OVER (…) rn FROM employees) WHERE rn &lt;= 3</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l11-over-after-where",
+  "topic": "Аналитика",
+  "q": "Что окажется в столбце COUNT(*) OVER ()?",
+  "code": "SELECT emp_id, COUNT(*) OVER ()\n  FROM employees\n WHERE dept_id = 40;",
+  "opts": [
+   "2 в каждой строке",
+   "20 в каждой строке",
+   "1 и 2",
+   "Ошибка: OVER () без ORDER BY"
+  ],
+  "a": 0,
+  "why": "Окно строится по строкам, которые остались <b>после WHERE</b>. В отделе 40 двое, поэтому в обеих строках 2. Аналитика не «видит» отфильтрованные строки.",
+  "section": "lessons"
+ },
+ {
+  "id": "l11-rank-dense",
+  "topic": "Ранжирование",
+  "q": "Зарплаты: 7000, 6500, 6500, 6000. Какие места получит 6000 по RANK и по DENSE_RANK (по убыванию)?",
+  "opts": [
+   "RANK = 4, DENSE_RANK = 3",
+   "RANK = 3, DENSE_RANK = 3",
+   "RANK = 3, DENSE_RANK = 4",
+   "RANK = 4, DENSE_RANK = 4"
+  ],
+  "a": 0,
+  "why": "Двое делят 2-е место. <code>RANK</code> после дележа пропускает места (1, 2, 2, 4), <code>DENSE_RANK</code> идёт без дыр (1, 2, 2, 3).",
+  "section": "lessons"
+ },
+ {
+  "id": "l11-nth",
+  "topic": "Ранжирование",
+  "q": "Нужны ВСЕ сотрудники со второй по величине зарплатой (их может быть несколько). Какое условие во внешнем запросе верное?",
+  "opts": [
+   "DENSE_RANK() OVER (ORDER BY salary DESC) = 2",
+   "ROW_NUMBER() OVER (ORDER BY salary DESC) = 2",
+   "RANK() OVER (ORDER BY salary DESC) = 2",
+   "NTILE(2) OVER (ORDER BY salary DESC) = 2"
+  ],
+  "a": 0,
+  "why": "ROW_NUMBER выберет ровно одного, даже если зарплата одинаковая у нескольких. RANK = 2 не найдёт никого, если на первом месте двое (тогда следующее место 3). DENSE_RANK = 2 — ровно «вторая по величине зарплата».",
+  "section": "lessons"
+ },
+ {
+  "id": "l11-range-ties",
+  "topic": "Окна",
+  "q": "У 130 и 131 зарплата 2600. Что покажет SUM(salary) OVER (ORDER BY salary) в этих двух строках?",
+  "opts": [
+   "Одинаковую сумму у обоих (19950)",
+   "Разные суммы: 17350 и 19950",
+   "NULL у второго",
+   "Ошибку из-за дублей"
+  ],
+  "a": 0,
+  "why": "С ORDER BY окно по умолчанию — <code>RANGE … CURRENT ROW</code>: в него входят все строки, равные текущей по ключу сортировки. Поэтому равные строки получают одинаковый итог. Построчный итог — <code>ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l11-last-value",
+  "topic": "Окна",
+  "q": "Что вернёт LAST_VALUE(last_name) OVER (PARTITION BY dept_id ORDER BY salary DESC) для сотрудника 140 (отдел 40: 140 — 1800, 141 — 1750)?",
+  "opts": [
+   "Ismoilov — фамилию самого 140",
+   "Hamidova — минимальную зарплату отдела",
+   "NULL",
+   "Ошибку: LAST_VALUE требует ROWS"
+  ],
+  "a": 0,
+  "why": "Окно по умолчанию заканчивается на текущей строке, и для 140 «последняя строка окна» — он сам. Чтобы получить последнюю строку партиции, нужно <code>ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l11-ntile",
+  "topic": "NTILE",
+  "q": "В таблице 20 строк. Как NTILE(3) OVER (ORDER BY emp_id) распределит их по корзинам?",
+  "opts": [
+   "7, 7, 6",
+   "6, 7, 7",
+   "7, 6, 7",
+   "6, 6, 8"
+  ],
+  "a": 0,
+  "why": "NTILE делит строки почти поровну, а остаток раздаёт первым корзинам по одной строке: 20 = 6 + 6 + 6 и ещё 2, значит первые две корзины получают по 7.",
+  "section": "lessons"
+ },
+ {
+  "id": "l12-prior-dir",
+  "topic": "CONNECT BY",
+  "q": "Что вернёт запрос?",
+  "code": "SELECT emp_id\n  FROM employees\n START WITH manager_id IS NULL\nCONNECT BY emp_id = PRIOR manager_id;",
+  "opts": [
+   "Только директора (100) — выше него никого нет",
+   "Всех 20 сотрудников сверху вниз",
+   "Ошибку: PRIOR не с той стороны",
+   "Ни одной строки"
+  ],
+  "a": 0,
+  "why": "<code>emp_id = PRIOR manager_id</code> — обход вверх: ищем строку, чей emp_id равен manager_id предыдущей. У директора manager_id NULL, следующей строки нет. Для обхода вниз нужно <code>PRIOR emp_id = manager_id</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l12-no-start",
+  "topic": "CONNECT BY",
+  "q": "Сколько строк вернёт запрос без START WITH на нашей таблице из 20 сотрудников?",
+  "code": "SELECT COUNT(*)\n  FROM employees\nCONNECT BY PRIOR emp_id = manager_id;",
+  "opts": [
+   "56",
+   "20",
+   "1",
+   "Ошибку: START WITH обязателен"
+  ],
+  "a": 0,
+  "why": "Без <code>START WITH</code> корнем становится каждая строка, и для каждой выводится её поддерево. Сумма размеров всех поддеревьев у нас — 56. Корень почти всегда нужно задавать явно.",
+  "section": "lessons"
+ },
+ {
+  "id": "l12-where-vs-connect",
+  "topic": "CONNECT BY",
+  "q": "Начинаем с emp_id = 101. В чём разница между WHERE emp_id <> 111 и условием AND emp_id <> 111 в CONNECT BY?",
+  "opts": [
+   "WHERE убирает только строку 111, CONNECT BY — всю ветку 111 с подчинёнными",
+   "Никакой разницы",
+   "WHERE убирает всю ветку, CONNECT BY — только строку",
+   "Условие в CONNECT BY вызовет ошибку"
+  ],
+  "a": 0,
+  "why": "WHERE применяется к уже построенному дереву и фильтрует отдельные строки: 113 и 114 останутся. Условие в CONNECT BY не пускает обход в узел 111, поэтому его подчинённые тоже не попадают в результат (3 строки вместо 5).",
+  "section": "lessons"
+ },
+ {
+  "id": "l12-order-siblings",
+  "topic": "Сортировка",
+  "q": "Зачем в иерархическом запросе ORDER SIBLINGS BY вместо ORDER BY?",
+  "opts": [
+   "ORDER BY сортирует все строки подряд и разрушает дерево, SIBLINGS — только детей одного родителя",
+   "ORDER BY в иерархических запросах запрещён",
+   "ORDER SIBLINGS BY быстрее, результат тот же",
+   "ORDER SIBLINGS BY сортирует по LEVEL"
+  ],
+  "a": 0,
+  "why": "Обычный ORDER BY перемешает уровни, и подчинённые окажутся оторваны от начальников. <code>ORDER SIBLINGS BY</code> сохраняет обход в глубину и упорядочивает только «братьев».",
+  "section": "lessons"
+ },
+ {
+  "id": "l12-isleaf",
+  "topic": "CONNECT BY",
+  "q": "Что вернёт CONNECT_BY_ISLEAF для Sardor Nazarov (111) в дереве от директора?",
+  "opts": [
+   "0 — у него есть подчинённые 113 и 114",
+   "1 — он рядовой разработчик",
+   "3 — его уровень",
+   "NULL"
+  ],
+  "a": 0,
+  "why": "<code>CONNECT_BY_ISLEAF</code> = 1 только у строк без детей в построенном дереве. У 111 в подчинении Rahimov и Sattorova, поэтому 0, хотя должность у него не руководящая.",
+  "section": "lessons"
+ },
+ {
+  "id": "l12-gen-rows",
+  "topic": "Генерация строк",
+  "q": "Сколько строк вернёт запрос (в employees 20 строк)?",
+  "code": "SELECT LEVEL\n  FROM employees\nCONNECT BY LEVEL <= 2;",
+  "opts": [
+   "420",
+   "2",
+   "40",
+   "20"
+  ],
+  "a": 0,
+  "why": "CONNECT BY без PRIOR соединяет каждую строку с каждой на следующем уровне: 20 строк уровня 1 и 20 × 20 = 400 уровня 2. Генерировать числа надо от <code>dual</code> — там одна строка.",
+  "section": "lessons"
+ },
+ {
+  "id": "l12-cycle",
+  "topic": "Циклы",
+  "q": "В данных есть цикл: A — начальник B, а B — начальник A. Что сделает CONNECT BY PRIOR emp_id = manager_id?",
+  "opts": [
+   "Упадёт с ORA-01436: CONNECT BY loop in user data",
+   "Уйдёт в бесконечный цикл",
+   "Тихо пропустит обе строки",
+   "Вернёт NULL в LEVEL"
+  ],
+  "a": 0,
+  "why": "Oracle замечает цикл и прерывает запрос с <code>ORA-01436</code>. <code>CONNECT BY NOCYCLE</code> обходит цикл, а <code>CONNECT_BY_ISCYCLE</code> показывает, на какой строке он замыкается.",
+  "section": "lessons"
+ },
+ {
+  "id": "l12-recursive-with",
+  "topic": "Рекурсивный WITH",
+  "q": "Почему этот запрос падает с ORA-32039?",
+  "code": "WITH sub AS (\n  SELECT emp_id, 1 lvl FROM employees WHERE emp_id = 102\n  UNION ALL\n  SELECT e.emp_id, s.lvl + 1\n    FROM employees e JOIN sub s ON e.manager_id = s.emp_id\n)\nSELECT * FROM sub;",
+  "opts": [
+   "У рекурсивного WITH в Oracle обязателен список столбцов: sub (emp_id, lvl)",
+   "Нельзя JOIN-ить CTE с самим собой",
+   "Нужен UNION вместо UNION ALL",
+   "Рекурсивный WITH в Oracle не поддерживается"
+  ],
+  "a": 0,
+  "why": "Oracle требует явно перечислить столбцы рекурсивного CTE: <code>WITH sub (emp_id, lvl) AS (…)</code>. Сама рекурсия — якорь, <code>UNION ALL</code>, JOIN с CTE — написана верно.",
+  "section": "lessons"
+ },
+ {
+  "id": "l13-assign-eq",
+  "topic": "Присваивание",
+  "q": "Что произойдёт при запуске этого блока?",
+  "code": "DECLARE\n  v NUMBER;\nBEGIN\n  v = 5;\nEND;",
+  "opts": [
+   "Ошибка компиляции PLS-00103",
+   "v станет равно 5",
+   "Блок выполнится, v останется NULL",
+   "Ошибка ORA-01403"
+  ],
+  "a": 0,
+  "why": "В PL/SQL присваивание — <code>:=</code>. Одиночное <code>=</code> — только сравнение, а сравнение не может быть отдельной командой, поэтому парсер выдаёт <code>PLS-00103</code> и даже подсказывает, что ждал <code>:=</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l13-max-into",
+  "topic": "SELECT INTO",
+  "q": "Сотрудника 999 нет. Что будет в v после этой команды?",
+  "code": "SELECT MAX(salary) INTO v\n  FROM employees\n WHERE emp_id = 999;",
+  "opts": [
+   "NULL, ошибки не будет",
+   "Ошибка NO_DATA_FOUND",
+   "0",
+   "Ошибка TOO_MANY_ROWS"
+  ],
+  "a": 0,
+  "why": "Агрегат без <code>GROUP BY</code> всегда возвращает ровно одну строку. <code>MAX</code> по пустому набору — NULL, <code>COUNT(*)</code> — 0. Поэтому NO_DATA_FOUND тут не бывает — частый вопрос на собеседовании.",
+  "section": "lessons"
+ },
+ {
+  "id": "l13-too-many",
+  "topic": "SELECT INTO",
+  "q": "У нас два сотрудника с именем Sardor (111 и 122). Что сделает этот код?",
+  "code": "SELECT emp_id INTO v_id\n  FROM employees\n WHERE first_name = 'Sardor';",
+  "opts": [
+   "Выбросит ORA-01422 TOO_MANY_ROWS",
+   "Положит в v_id первый emp_id (111)",
+   "Положит в v_id последний emp_id (122)",
+   "Выбросит NO_DATA_FOUND"
+  ],
+  "a": 0,
+  "why": "<code>SELECT INTO</code> требует ровно одну строку. Две и больше — <code>ORA-01422: exact fetch returned more than the requested number of rows</code>. Oracle не выбирает «первую» за тебя.",
+  "section": "lessons"
+ },
+ {
+  "id": "l13-counter-null",
+  "topic": "NULL",
+  "q": "Что напечатает блок?",
+  "code": "DECLARE\n  v_cnt NUMBER;\nBEGIN\n  v_cnt := v_cnt + 1;\n  DBMS_OUTPUT.PUT_LINE('cnt=' || v_cnt);\nEND;",
+  "opts": [
+   "cnt=",
+   "cnt=1",
+   "cnt=0",
+   "Ошибку: переменная не инициализирована"
+  ],
+  "a": 0,
+  "why": "Переменная без <code>:=</code> равна NULL, а <code>NULL + 1</code> — тоже NULL. Склейка с NULL даёт просто <code>'cnt='</code>. Счётчики всегда объявляй с <code>:= 0</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l13-after-error",
+  "topic": "Исключения",
+  "q": "Сотрудника 999 нет. Что напечатает блок?",
+  "code": "BEGIN\n  DBMS_OUTPUT.PUT_LINE('A');\n  SELECT salary INTO v FROM employees WHERE emp_id = 999;\n  DBMS_OUTPUT.PUT_LINE('B');\nEXCEPTION\n  WHEN NO_DATA_FOUND THEN\n    DBMS_OUTPUT.PUT_LINE('C');\nEND;",
+  "opts": [
+   "A и C",
+   "A, B и C",
+   "Только C",
+   "A и B"
+  ],
+  "a": 0,
+  "why": "После ошибки выполнение секции <code>BEGIN</code> обрывается и переходит в <code>EXCEPTION</code>. Строка <code>'B'</code> не выполнится. Чтобы продолжить после ошибки, оборачивают опасный кусок во вложенный блок.",
+  "section": "lessons"
+ },
+ {
+  "id": "l13-scope",
+  "topic": "Область видимости",
+  "q": "Что будет при запуске?",
+  "code": "BEGIN\n  DECLARE\n    x NUMBER := 1;\n  BEGIN\n    NULL;\n  END;\n  DBMS_OUTPUT.PUT_LINE(x);\nEND;",
+  "opts": [
+   "Ошибка компиляции PLS-00201: x не объявлена",
+   "Напечатает 1",
+   "Напечатает пустую строку",
+   "Напечатает 0"
+  ],
+  "a": 0,
+  "why": "Переменная живёт только внутри своего блока. Внешний блок не видит переменных вложенного, поэтому <code>x</code> для него не существует — <code>PLS-00201: identifier 'X' must be declared</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l13-type-notnull",
+  "topic": "%TYPE",
+  "q": "Столбец first_name объявлен NOT NULL. Что будет?",
+  "code": "DECLARE\n  v employees.first_name%TYPE;\nBEGIN\n  v := NULL;\n  DBMS_OUTPUT.PUT_LINE('ok');\nEND;",
+  "opts": [
+   "Напечатает ok",
+   "Ошибка: нельзя присвоить NULL",
+   "Ошибка компиляции: нужна инициализация",
+   "Ошибка ORA-01400"
+  ],
+  "a": 0,
+  "why": "<code>%TYPE</code> копирует тип и длину столбца (<code>VARCHAR2(30)</code>), но не ограничения таблицы вроде <code>NOT NULL</code>. Поэтому присвоить NULL можно.",
+  "section": "lessons"
+ },
+ {
+  "id": "l13-null-if",
+  "topic": "NULL",
+  "q": "v_pct равно NULL. Что напечатает код?",
+  "code": "IF v_pct < 0.1 THEN\n  DBMS_OUTPUT.PUT_LINE('мало');\nELSE\n  DBMS_OUTPUT.PUT_LINE('много');\nEND IF;",
+  "opts": [
+   "много",
+   "мало",
+   "Ничего",
+   "Ошибку"
+  ],
+  "a": 0,
+  "why": "<code>NULL &lt; 0.1</code> — это не TRUE и не FALSE, а «неизвестно». <code>IF</code> выполняет ветку только при TRUE, поэтому управление уходит в <code>ELSE</code>. Отдельно проверяй <code>v_pct IS NULL</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l14-elseif",
+  "topic": "IF",
+  "q": "Что будет при компиляции?",
+  "code": "IF v = 1 THEN\n  x := 'a';\nELSEIF v = 2 THEN\n  x := 'b';\nEND IF;",
+  "opts": [
+   "Ошибка PLS-00103: ключевого слова ELSEIF нет",
+   "Всё скомпилируется",
+   "Предупреждение, но код выполнится",
+   "Ошибка только при v = 2"
+  ],
+  "a": 0,
+  "why": "В PL/SQL пишется <code>ELSIF</code>. Слово <code>ELSEIF</code> парсер не знает и выдаёт <code>PLS-00103</code>. Самая частая опечатка у тех, кто пришёл из других языков.",
+  "section": "lessons"
+ },
+ {
+  "id": "l14-case-not-found",
+  "topic": "CASE",
+  "q": "v = 3. Что произойдёт?",
+  "code": "CASE v\n  WHEN 1 THEN DBMS_OUTPUT.PUT_LINE('one');\n  WHEN 2 THEN DBMS_OUTPUT.PUT_LINE('two');\nEND CASE;",
+  "opts": [
+   "Ошибка ORA-06592 CASE_NOT_FOUND",
+   "Ничего не напечатается",
+   "Напечатается пустая строка",
+   "Ошибка компиляции: нет ELSE"
+  ],
+  "a": 0,
+  "why": "CASE-<b>оператор</b> без <code>ELSE</code>, не нашедший ветку, выбрасывает <code>ORA-06592: CASE not found</code>. CASE-<b>выражение</b> (<code>x := CASE … END;</code>) в той же ситуации вернуло бы NULL.",
+  "section": "lessons"
+ },
+ {
+  "id": "l14-case-expr-null",
+  "topic": "CASE",
+  "q": "Что напечатает блок?",
+  "code": "DECLARE\n  v VARCHAR2(10);\nBEGIN\n  v := CASE 3 WHEN 1 THEN 'one' END;\n  DBMS_OUTPUT.PUT_LINE('[' || v || ']');\nEND;",
+  "opts": [
+   "[]",
+   "[one]",
+   "Ошибку ORA-06592",
+   "[3]"
+  ],
+  "a": 0,
+  "why": "Это CASE-<b>выражение</b>: без совпадения и без <code>ELSE</code> оно возвращает NULL, и ошибки нет. Ошибка CASE_NOT_FOUND бывает только у CASE-оператора с <code>END CASE</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l14-for-backwards",
+  "topic": "FOR",
+  "q": "Сколько строк напечатает этот цикл?",
+  "code": "FOR i IN 5..1 LOOP\n  DBMS_OUTPUT.PUT_LINE(i);\nEND LOOP;",
+  "opts": [
+   "Ни одной",
+   "5 строк: 5, 4, 3, 2, 1",
+   "5 строк: 1, 2, 3, 4, 5",
+   "Ошибку компиляции"
+  ],
+  "a": 0,
+  "why": "Нижняя граница больше верхней — цикл не выполняется ни разу, без ошибки. Для обратного порядка нужно <code>FOR i IN REVERSE 1..5</code>: границы по-прежнему «меньшая..большая».",
+  "section": "lessons"
+ },
+ {
+  "id": "l14-for-counter",
+  "topic": "FOR",
+  "q": "Что будет с этим кодом?",
+  "code": "FOR i IN 1..10 LOOP\n  IF i = 3 THEN\n    i := 8;\n  END IF;\nEND LOOP;",
+  "opts": [
+   "Ошибка компиляции PLS-00363: счётчик нельзя менять",
+   "Цикл перепрыгнет с 3 на 8",
+   "Цикл станет бесконечным",
+   "Присваивание проигнорируется"
+  ],
+  "a": 0,
+  "why": "Счётчик FOR-цикла доступен только для чтения. Нужна гибкость — используй <code>WHILE</code> или <code>LOOP</code> со своей переменной.",
+  "section": "lessons"
+ },
+ {
+  "id": "l14-while-null",
+  "topic": "WHILE",
+  "q": "Что напечатает блок?",
+  "code": "DECLARE\n  v NUMBER;\n  n NUMBER := 0;\nBEGIN\n  WHILE v < 10 LOOP\n    n := n + 1;\n    v := NVL(v, 0) + 1;\n  END LOOP;\n  DBMS_OUTPUT.PUT_LINE('n=' || n);\nEND;",
+  "opts": [
+   "n=0",
+   "n=10",
+   "n=11",
+   "Бесконечный цикл"
+  ],
+  "a": 0,
+  "why": "<code>v</code> не инициализирована, условие <code>NULL &lt; 10</code> — неизвестно, а <code>WHILE</code> идёт только при TRUE. Цикл не выполнится ни разу, и <code>NVL</code> внутри уже не поможет.",
+  "section": "lessons"
+ },
+ {
+  "id": "l14-exit-inner",
+  "topic": "Вложенные циклы",
+  "q": "Что напечатает код?",
+  "code": "FOR i IN 1..3 LOOP\n  FOR j IN 1..3 LOOP\n    EXIT WHEN j = 2;\n    DBMS_OUTPUT.PUT_LINE(i || '-' || j);\n  END LOOP;\nEND LOOP;",
+  "opts": [
+   "1-1, 2-1, 3-1",
+   "Только 1-1",
+   "1-1, 1-2, 1-3",
+   "Ничего"
+  ],
+  "a": 0,
+  "why": "<code>EXIT</code> без метки выходит только из внутреннего цикла, внешний продолжает. Чтобы выйти из обоих, внешнему циклу дают метку <code>&lt;&lt;outer&gt;&gt;</code> и пишут <code>EXIT outer WHEN …</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l14-fizzbuzz-order",
+  "topic": "IF",
+  "q": "Что этот код напечатает для i = 15?",
+  "code": "IF MOD(i, 3) = 0 THEN\n  p('Fizz');\nELSIF MOD(i, 5) = 0 THEN\n  p('Buzz');\nELSIF MOD(i, 15) = 0 THEN\n  p('FizzBuzz');\nEND IF;",
+  "opts": [
+   "Fizz",
+   "FizzBuzz",
+   "Buzz",
+   "FizzBuzz и Fizz"
+  ],
+  "a": 0,
+  "why": "<code>IF/ELSIF</code> выполняет только <b>первую</b> истинную ветку. 15 делится на 3, поэтому срабатывает первая ветка, до проверки на 15 дело не доходит. Самое строгое условие ставь первым.",
+  "section": "lessons"
+ },
+ {
+  "id": "l15-update-zero",
+  "topic": "Неявный курсор",
+  "q": "Заказа 9999 нет. Что произойдёт при выполнении этого UPDATE в блоке?",
+  "code": "UPDATE orders SET status = 'PAID'\n WHERE order_id = 9999;",
+  "opts": [
+   "Ничего: ошибки нет, SQL%ROWCOUNT = 0",
+   "Исключение NO_DATA_FOUND",
+   "Ошибка ORA-01403 только при COMMIT",
+   "Исключение TOO_MANY_ROWS"
+  ],
+  "a": 0,
+  "why": "NO_DATA_FOUND выбрасывает только <code>SELECT INTO</code>. <code>UPDATE</code>/<code>DELETE</code> без подходящих строк молча обрабатывают 0 строк. Если это ошибка для логики — проверяй <code>SQL%NOTFOUND</code> или <code>SQL%ROWCOUNT = 0</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l15-rowcount-last",
+  "topic": "Неявный курсор",
+  "q": "Что напечатает блок? (в отделе 20 четыре сотрудника)",
+  "code": "UPDATE employees SET salary = salary WHERE dept_id = 20;\nSELECT salary INTO v FROM employees WHERE emp_id = 110;\nDBMS_OUTPUT.PUT_LINE(SQL%ROWCOUNT);",
+  "opts": [
+   "1",
+   "4",
+   "5",
+   "0"
+  ],
+  "a": 0,
+  "why": "<code>SQL%…</code> всегда описывает <b>последнюю</b> SQL-команду. Последней был <code>SELECT INTO</code> с одной строкой. Число обновлённых строк надо сохранить в переменную сразу после UPDATE.",
+  "section": "lessons"
+ },
+ {
+  "id": "l15-sql-isopen",
+  "topic": "Неявный курсор",
+  "q": "Чему равен SQL%ISOPEN сразу после UPDATE в PL/SQL?",
+  "opts": [
+   "Всегда FALSE",
+   "TRUE до COMMIT",
+   "TRUE, если обновлена хоть одна строка",
+   "NULL"
+  ],
+  "a": 0,
+  "why": "Неявный курсор Oracle открывает и закрывает сам вокруг каждой команды, поэтому к моменту, когда ты читаешь атрибут, он уже закрыт. <code>SQL%ISOPEN</code> всегда FALSE — популярный вопрос «на внимательность».",
+  "section": "lessons"
+ },
+ {
+  "id": "l15-exit-when-dup",
+  "topic": "Явный курсор",
+  "q": "Курсор возвращает три товара: A, B, C. Что напечатает цикл?",
+  "code": "LOOP\n  FETCH c INTO v_name;\n  DBMS_OUTPUT.PUT_LINE(v_name);\n  EXIT WHEN c%NOTFOUND;\nEND LOOP;",
+  "opts": [
+   "A, B, C, C",
+   "A, B, C",
+   "A, B",
+   "A, B, C и пустую строку"
+  ],
+  "a": 0,
+  "why": "Четвёртый FETCH ничего не приносит, но и не очищает переменную — в ней остаётся C. Печать стоит до проверки, поэтому C выводится дважды. <code>EXIT WHEN c%NOTFOUND</code> ставят сразу после <code>FETCH</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l15-closed-attr",
+  "topic": "Явный курсор",
+  "q": "Что произойдёт?",
+  "code": "OPEN c;\n… -- выбрали 6 строк\nCLOSE c;\nDBMS_OUTPUT.PUT_LINE(c%ROWCOUNT);",
+  "opts": [
+   "Ошибка ORA-01001: invalid cursor",
+   "Напечатает 6",
+   "Напечатает 0",
+   "Напечатает пустую строку"
+  ],
+  "a": 0,
+  "why": "После <code>CLOSE</code> атрибуты курсора недоступны, кроме <code>%ISOPEN</code>. Итог <code>%ROWCOUNT</code> читают до закрытия или копируют в переменную.",
+  "section": "lessons"
+ },
+ {
+  "id": "l15-for-open",
+  "topic": "Cursor FOR loop",
+  "q": "Что произойдёт?",
+  "code": "DECLARE\n  CURSOR c IS SELECT prod_name FROM products;\nBEGIN\n  OPEN c;\n  FOR r IN c LOOP\n    NULL;\n  END LOOP;\nEND;",
+  "opts": [
+   "ORA-06511: cursor already open",
+   "Цикл пройдёт по всем товарам",
+   "Цикл не выполнится ни разу",
+   "Цикл пропустит первую строку"
+  ],
+  "a": 0,
+  "why": "Cursor FOR loop сам делает OPEN, FETCH и CLOSE. Если курсор уже открыт вручную, второй OPEN падает с <code>ORA-06511</code>. С FOR-циклом OPEN и CLOSE не пишут.",
+  "section": "lessons"
+ },
+ {
+  "id": "l15-for-close-on-error",
+  "topic": "Cursor FOR loop",
+  "q": "Внутри cursor FOR loop произошла ошибка, и блок вышел в EXCEPTION. Что с курсором?",
+  "opts": [
+   "Oracle закрыл его автоматически",
+   "Остался открытым до конца сессии",
+   "Остался открытым до COMMIT",
+   "Закроется только если в EXCEPTION написать CLOSE"
+  ],
+  "a": 0,
+  "why": "Cursor FOR loop закрывает курсор при любом выходе из цикла: обычном, по <code>EXIT</code> и по исключению. Явный курсор (OPEN/FETCH/CLOSE) так не умеет — его надо закрывать в обработчике самому.",
+  "section": "lessons"
+ },
+ {
+  "id": "l15-alias",
+  "topic": "Запись курсора",
+  "q": "Почему этот код не компилируется?",
+  "code": "FOR r IN (SELECT category, COUNT(*)\n            FROM products GROUP BY category) LOOP\n  DBMS_OUTPUT.PUT_LINE(r.category || ': ' || r.count);\nEND LOOP;",
+  "opts": [
+   "У COUNT(*) нет алиаса, поля r.count не существует",
+   "В cursor FOR loop нельзя GROUP BY",
+   "r нужно объявить в DECLARE",
+   "COUNT(*) нельзя склеивать через ||"
+  ],
+  "a": 0,
+  "why": "Поле записи называется как столбец курсора, а у выражения без алиаса имя <code>\"COUNT(*)\"</code>. Отсюда <code>PLS-00302: component 'COUNT' must be declared</code>. Дай алиас: <code>COUNT(*) AS cnt</code>, тогда <code>r.cnt</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l16-param-size",
+  "topic": "Параметры курсора",
+  "q": "Почему этот курсор не компилируется?",
+  "code": "CURSOR c_emp (p_name VARCHAR2(30)) IS\n  SELECT * FROM employees\n   WHERE last_name = p_name;",
+  "opts": [
+   "У параметра нельзя указывать размер типа",
+   "Курсор не может иметь параметров",
+   "Параметр должен называться как столбец",
+   "Нужно слово IN перед типом"
+  ],
+  "a": 0,
+  "why": "Параметры курсоров, процедур и функций объявляются без размера: <code>p_name VARCHAR2</code>. С <code>(30)</code> получишь <code>PLS-00103</code>. Размер берётся от фактического значения.",
+  "section": "lessons"
+ },
+ {
+  "id": "l16-for-update-when",
+  "topic": "FOR UPDATE",
+  "q": "Когда курсор с FOR UPDATE блокирует строки?",
+  "opts": [
+   "Все строки сразу при OPEN",
+   "Каждую строку при её FETCH",
+   "При первом UPDATE … WHERE CURRENT OF",
+   "При COMMIT"
+  ],
+  "a": 0,
+  "why": "При <code>OPEN</code> запрос выполняется целиком и все попавшие строки блокируются. Держатся блокировки до <code>COMMIT</code> или <code>ROLLBACK</code> — даже если ты прочитал только первую строку.",
+  "section": "lessons"
+ },
+ {
+  "id": "l16-commit-in-loop",
+  "topic": "FOR UPDATE",
+  "q": "Что произойдёт на второй итерации?",
+  "code": "FOR r IN c_upd LOOP   -- c_upd объявлен FOR UPDATE\n  UPDATE emp_raise_cur SET salary = salary + 1\n   WHERE CURRENT OF c_upd;\n  COMMIT;\nEND LOOP;",
+  "opts": [
+   "ORA-01002: fetch out of sequence",
+   "Всё отработает, просто медленнее",
+   "ORA-00054: resource busy",
+   "Обновится только последняя строка"
+  ],
+  "a": 0,
+  "why": "<code>COMMIT</code> снимает блокировки, взятые <code>FOR UPDATE</code>, и курсор становится недействительным: следующий FETCH даёт <code>ORA-01002</code>. Фиксируй изменения после цикла.",
+  "section": "lessons"
+ },
+ {
+  "id": "l16-nowait",
+  "topic": "FOR UPDATE",
+  "q": "Строку уже заблокировала другая сессия. Что сделает SELECT … FOR UPDATE NOWAIT?",
+  "opts": [
+   "Сразу упадёт с ORA-00054",
+   "Будет ждать, пока блокировку не снимут",
+   "Пропустит заблокированную строку",
+   "Прочитает строку без блокировки"
+  ],
+  "a": 0,
+  "why": "Без опций <code>FOR UPDATE</code> ждёт бесконечно. <code>NOWAIT</code> — не ждать, сразу ошибка <code>ORA-00054</code>. <code>WAIT n</code> — ждать n секунд. <code>SKIP LOCKED</code> — пропустить занятые строки.",
+  "section": "lessons"
+ },
+ {
+  "id": "l16-current-of",
+  "topic": "WHERE CURRENT OF",
+  "q": "Что нужно, чтобы написать UPDATE … WHERE CURRENT OF c?",
+  "opts": [
+   "Курсор c должен быть объявлен с FOR UPDATE",
+   "Курсор c должен быть открыт через OPEN, а не FOR",
+   "У таблицы должен быть первичный ключ",
+   "Нужен SYS_REFCURSOR"
+  ],
+  "a": 0,
+  "why": "<code>WHERE CURRENT OF</code> меняет строку, на которой стоит курсор, по её ROWID, и требует, чтобы строки были заблокированы. Без <code>FOR UPDATE</code> — <code>PLS-00404: cursor must be declared with FOR UPDATE to use with CURRENT OF</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l16-refcursor-why",
+  "topic": "SYS_REFCURSOR",
+  "q": "Что можно сделать с SYS_REFCURSOR, но нельзя с обычным явным курсором?",
+  "opts": [
+   "Вернуть его из функции и прочитать снаружи, в том числе в Java/Python",
+   "Читать его через FETCH",
+   "Проверять %NOTFOUND",
+   "Передать параметры в запрос"
+  ],
+  "a": 0,
+  "why": "Курсорная переменная — это значение, его можно присвоить, передать в подпрограмму и вернуть из функции, а клиент прочитает строки. Так API на PL/SQL отдаёт списки приложению. FETCH, атрибуты и параметры (через переменные в запросе) есть у обоих.",
+  "section": "lessons"
+ },
+ {
+  "id": "l16-refcursor-for",
+  "topic": "SYS_REFCURSOR",
+  "q": "Что будет при компиляции?",
+  "code": "DECLARE\n  v_rc SYS_REFCURSOR;\nBEGIN\n  OPEN v_rc FOR SELECT last_name FROM employees;\n  FOR r IN v_rc LOOP\n    DBMS_OUTPUT.PUT_LINE(r.last_name);\n  END LOOP;\nEND;",
+  "opts": [
+   "Ошибка PLS-00859: для слабой курсорной переменной так нельзя",
+   "Напечатает все фамилии",
+   "Ошибка ORA-06511: cursor already open",
+   "Цикл не выполнится ни разу"
+  ],
+  "a": 0,
+  "why": "Cursor FOR loop работает с курсором, чья структура известна при компиляции. У <code>SYS_REFCURSOR</code> она неизвестна, поэтому читают через <code>LOOP / FETCH / EXIT WHEN v_rc%NOTFOUND</code> и закрывают сами.",
+  "section": "lessons"
+ },
+ {
+  "id": "l16-ora-01000",
+  "topic": "ORA-01000",
+  "q": "Приложение после нескольких часов работы падает с ORA-01000. Самая вероятная причина?",
+  "opts": [
+   "Курсоры открываются и не закрываются (часто на пути ошибки)",
+   "В таблице слишком много строк",
+   "Кончилось место в табличном пространстве",
+   "Слишком много пользователей в базе"
+  ],
+  "a": 0,
+  "why": "<code>ORA-01000: maximum open cursors exceeded</code> — превышен лимит <code>OPEN_CURSORS</code> на сессию. Почти всегда это утечка: явный курсор или ref cursor не закрыт в обработчике ошибки, или приложение не закрывает полученный курсор. Лечат закрытием, а не увеличением лимита.",
+  "section": "lessons"
+ },
+ {
+  "id": "l17-max-ndf",
+  "topic": "NO_DATA_FOUND",
+  "q": "Что произойдёт при выполнении блока?",
+  "code": "DECLARE\n  v NUMBER;\nBEGIN\n  SELECT MAX(salary) INTO v FROM employees WHERE emp_id = 999;\n  DBMS_OUTPUT.PUT_LINE(NVL(TO_CHAR(v), 'пусто'));\nEND;",
+  "opts": [
+   "Напечатает «пусто»",
+   "Ошибка ORA-01403: no data found",
+   "Ошибка ORA-01422",
+   "Ничего не напечатает"
+  ],
+  "a": 0,
+  "why": "Агрегат без GROUP BY всегда возвращает ровно одну строку — даже если под условие ничего не попало, в ней будет NULL. Поэтому <code>NO_DATA_FOUND</code> не возникает. Этим приёмом (или <code>COUNT(*)</code>) часто обходят исключение.",
+  "section": "lessons"
+ },
+ {
+  "id": "l17-sqlcode-100",
+  "topic": "SQLCODE",
+  "q": "Что напечатает WHEN OTHERS THEN DBMS_OUTPUT.PUT_LINE(SQLCODE), если SELECT INTO не нашёл ни одной строки?",
+  "opts": [
+   "100",
+   "-1403",
+   "1403",
+   "-100"
+  ],
+  "a": 0,
+  "why": "У <code>NO_DATA_FOUND</code> SQLCODE равен <code>+100</code> (код ANSI «нет данных»), хотя в тексте ошибки — ORA-01403. Все остальные Oracle-ошибки дают отрицательный SQLCODE.",
+  "section": "lessons"
+ },
+ {
+  "id": "l17-others-null",
+  "topic": "WHEN OTHERS",
+  "q": "Чем плох обработчик WHEN OTHERS THEN NULL;?",
+  "opts": [
+   "Глотает любую ошибку: блок «успешен», данные могут быть частично изменены, следов нет",
+   "Он не компилируется",
+   "Он ловит только системные ошибки, а пользовательские пропускает",
+   "Он автоматически делает ROLLBACK всей транзакции"
+  ],
+  "a": 0,
+  "why": "<code>WHEN OTHERS THEN NULL</code> скрывает ошибку от вызывающего: тот считает, что всё прошло, а на деле часть работы не сделана. Правило: в OTHERS — записать ошибку (SQLERRM + backtrace) и пробросить <code>RAISE;</code>. С включёнными предупреждениями (<code>PLSQL_WARNINGS='ENABLE:ALL'</code>) компилятор даже выдаёт <code>PLW-06009: ... OTHERS handler does not end in RAISE</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l17-to-number",
+  "topic": "VALUE_ERROR",
+  "q": "Какой обработчик поймает ошибку в строке SELECT TO_NUMBER('abc') INTO v FROM dual внутри PL/SQL-блока?",
+  "opts": [
+   "INVALID_NUMBER (ORA-01722)",
+   "VALUE_ERROR (ORA-06502)",
+   "ZERO_DIVIDE",
+   "Никакой — это ошибка компиляции"
+  ],
+  "a": 0,
+  "why": "Преобразование выполняет SQL-движок, а он бросает <code>ORA-01722</code> — INVALID_NUMBER. Если написать то же в PL/SQL (<code>v := TO_NUMBER('abc')</code>), будет <code>ORA-06502</code> — VALUE_ERROR. Разные движки — разные исключения.",
+  "section": "lessons"
+ },
+ {
+  "id": "l17-unhandled-user",
+  "topic": "RAISE",
+  "q": "Что увидит приложение, если блок поднял своё исключение e_no_stock командой RAISE и нигде его не поймал?",
+  "opts": [
+   "ORA-06510: PL/SQL: unhandled user-defined exception",
+   "ORA-20000: e_no_stock",
+   "Ничего — неперехваченные пользовательские исключения игнорируются",
+   "ORA-01403: no data found"
+  ],
+  "a": 0,
+  "why": "Своё исключение без привязки к номеру снаружи выглядит как безликое <code>ORA-06510</code>, без имени и текста. Чтобы приложение получило понятное сообщение, используют <code>RAISE_APPLICATION_ERROR(-20001, 'текст')</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l17-rae-range",
+  "topic": "RAISE_APPLICATION_ERROR",
+  "q": "Какой номер ошибки допустим в RAISE_APPLICATION_ERROR?",
+  "opts": [
+   "От -20000 до -20999",
+   "Любой отрицательный",
+   "От 20000 до 20999 без минуса",
+   "От -1 до -20999"
+  ],
+  "a": 0,
+  "why": "Диапазон зарезервирован под пользовательские ошибки: <code>-20000 .. -20999</code>. Вне его — <code>ORA-21000: error number argument to raise_application_error ... is out of range</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l17-reraise",
+  "topic": "Проброс",
+  "q": "Что напечатает блок?",
+  "code": "DECLARE\n  v NUMBER;\nBEGIN\n  BEGIN\n    SELECT salary INTO v FROM employees WHERE emp_id = 999;\n  EXCEPTION\n    WHEN NO_DATA_FOUND THEN\n      DBMS_OUTPUT.PUT_LINE('A');\n      RAISE;\n  END;\n  DBMS_OUTPUT.PUT_LINE('B');\nEXCEPTION\n  WHEN OTHERS THEN DBMS_OUTPUT.PUT_LINE('C');\nEND;",
+  "opts": [
+   "A и C",
+   "A, B и C",
+   "A и B",
+   "Только C"
+  ],
+  "a": 0,
+  "why": "Вложенный обработчик печатает A и <code>RAISE;</code> пробрасывает ту же ошибку во внешний блок. Строка с B пропускается — управление сразу уходит в EXCEPTION внешнего блока, который печатает C.",
+  "section": "lessons"
+ },
+ {
+  "id": "l17-backtrace",
+  "topic": "Backtrace",
+  "q": "Зачем в логе ошибок рядом с SQLERRM пишут DBMS_UTILITY.FORMAT_ERROR_BACKTRACE?",
+  "opts": [
+   "Он показывает номер строки, где ошибка возникла изначально",
+   "Он переводит текст ошибки на русский",
+   "Он автоматически откатывает транзакцию",
+   "Без него SQLERRM возвращает NULL"
+  ],
+  "a": 0,
+  "why": "<code>SQLERRM</code> говорит, <b>что</b> случилось, но не <b>где</b>. Бэктрейс — цепочка <code>ORA-06512: at line N</code> (или at \"SCHEMA.PROC\", line N), последняя строка которой — исходное место ошибки, даже после нескольких <code>RAISE;</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l18-proc-in-select",
+  "topic": "Процедуры",
+  "q": "Можно ли вызвать процедуру show_dept_staff_prc в SELECT?",
+  "code": "SELECT show_dept_staff_prc(10) FROM dual;",
+  "opts": [
+   "Нет — в SQL можно вызывать только функции",
+   "Да, она вернёт NULL",
+   "Да, если у неё только IN-параметры",
+   "Да, если добавить DETERMINISTIC"
+  ],
+  "a": 0,
+  "why": "Процедура ничего не возвращает, поэтому в выражении SQL ей не место. В SELECT, WHERE, ORDER BY вызываются только функции (с IN-параметрами и SQL-типами). Процедуру вызывают из PL/SQL-блока или <code>EXEC</code> в SQL*Plus.",
+  "section": "lessons"
+ },
+ {
+  "id": "l18-out-null",
+  "topic": "OUT-параметры",
+  "q": "Что напечатает процедура, если вызвать её с переменной, где лежит 42?",
+  "code": "CREATE OR REPLACE PROCEDURE p (x OUT NUMBER) IS\nBEGIN\n  DBMS_OUTPUT.PUT_LINE(NVL(TO_CHAR(x), 'NULL'));\n  x := 1;\nEND;",
+  "opts": [
+   "NULL",
+   "42",
+   "1",
+   "Ошибку компиляции: OUT нельзя читать"
+  ],
+  "a": 0,
+  "why": "OUT-параметр внутри процедуры всегда стартует с NULL — входное значение не передаётся. Если нужно и прочитать, и вернуть — режим <code>IN OUT</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l18-in-assign",
+  "topic": "Параметры",
+  "q": "Что будет, если внутри процедуры присвоить значение IN-параметру: p_dept_id := 10; ?",
+  "opts": [
+   "Процедура не скомпилируется: PLS-00363",
+   "Значение изменится только внутри процедуры",
+   "Значение изменится и у вызывающего",
+   "Ошибка возникнет только во время выполнения"
+  ],
+  "a": 0,
+  "why": "IN-параметр — константа внутри подпрограммы. Компилятор выдаёт <code>PLS-00363: expression 'P_DEPT_ID' cannot be used as an assignment target</code>, процедура сохраняется со статусом INVALID. Нужна рабочая копия — объяви локальную переменную.",
+  "section": "lessons"
+ },
+ {
+  "id": "l18-ndf-in-sql",
+  "topic": "Функции в SQL",
+  "q": "Функция f делает SELECT ... INTO по emp_id. Что вернёт SELECT f(999) FROM dual, если сотрудника 999 нет?",
+  "opts": [
+   "NULL",
+   "ORA-01403: no data found",
+   "0",
+   "ORA-06503: function returned without value"
+  ],
+  "a": 0,
+  "why": "Когда функцию вызывает SQL-движок, исключение <code>NO_DATA_FOUND</code> трактуется как «нет данных» и превращается в NULL. Из PL/SQL (<code>v := f(999)</code>) будет ORA-01403. Ошибку легко не заметить — обрабатывай NO_DATA_FOUND внутри функции явно.",
+  "section": "lessons"
+ },
+ {
+  "id": "l18-14551",
+  "topic": "ORA-14551",
+  "q": "Функция делает UPDATE и возвращает число. Что будет при SELECT f(120) FROM dual?",
+  "opts": [
+   "ORA-14551: cannot perform a DML operation inside a query",
+   "UPDATE выполнится, вернётся число",
+   "UPDATE будет пропущен, вернётся число",
+   "Ошибка компиляции функции"
+  ],
+  "a": 0,
+  "why": "Запрос не может менять данные. Функция компилируется нормально, но вызов из SELECT падает с <code>ORA-14551</code>. Из PL/SQL-блока (<code>v := f(120)</code>) работает. Обход через <code>PRAGMA AUTONOMOUS_TRANSACTION</code> существует, но меняет смысл транзакции.",
+  "section": "lessons"
+ },
+ {
+  "id": "l18-named-mix",
+  "topic": "Нотация =>",
+  "q": "Какой вызов процедуры p(a NUMBER, b NUMBER DEFAULT 1) НЕ скомпилируется?",
+  "opts": [
+   "p(a => 1, 2);",
+   "p(1, b => 2);",
+   "p(b => 2, a => 1);",
+   "p(1);"
+  ],
+  "a": 0,
+  "why": "Смешивать можно только так: сначала позиционные, потом именованные. Позиционный после именованного — <code>PLS-00312: a positional parameter association may not follow a named association</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l18-user-errors",
+  "topic": "user_errors",
+  "q": "Процедура создалась «with compilation errors». Где посмотреть текст ошибок?",
+  "opts": [
+   "SELECT * FROM user_errors WHERE name = 'ИМЯ_ЗАГЛАВНЫМИ'",
+   "SELECT * FROM user_source WHERE status = 'INVALID'",
+   "SELECT * FROM user_objects WHERE name = 'имя'",
+   "Ошибки видны только в момент CREATE, потом их нигде нет"
+  ],
+  "a": 0,
+  "why": "Ошибки компиляции хранятся в <code>user_errors</code> (строка, позиция, текст), в SQL*Plus — команда <code>SHOW ERRORS</code>. В <code>user_objects</code> только статус INVALID, в <code>user_source</code> — исходный текст. Имена в словаре — заглавными.",
+  "section": "lessons"
+ },
+ {
+  "id": "l18-deterministic",
+  "topic": "DETERMINISTIC",
+  "q": "Что сделает Oracle, если пометить DETERMINISTIC функцию, которая читает таблицу?",
+  "opts": [
+   "Скомпилирует без вопросов — ответственность на тебе, результаты в индексе/кэше могут устареть",
+   "Выдаст ошибку компиляции",
+   "Автоматически снимет признак DETERMINISTIC",
+   "Будет пересчитывать функцию при каждом изменении таблицы"
+  ],
+  "a": 0,
+  "why": "<code>DETERMINISTIC</code> — обещание, которое Oracle не проверяет. Он может кэшировать результат или построить по функции индекс, и после изменения данных ответы станут неверными. Помечай так только чистые функции от аргументов.",
+  "section": "lessons"
+ },
+ {
+  "id": "l19-spec-body",
+  "topic": "Пакеты",
+  "q": "Что будет, если создать спецификацию пакета с функцией f, а тело не создавать, и вызвать pkg.f?",
+  "opts": [
+   "ORA-04067: not executed, package body does not exist",
+   "Функция вернёт NULL",
+   "Спецификация не скомпилируется без тела",
+   "PLS-00302: component 'F' must be declared"
+  ],
+  "a": 0,
+  "why": "Спецификация — самостоятельный объект и компилируется без тела; её константы и переменные уже доступны. Но реализации функции нет, поэтому вызов падает с <code>ORA-04067</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l19-private",
+  "topic": "Приватное",
+  "q": "Функция get_salary объявлена только в теле пакета emp_api_pkg. Что даст SELECT emp_api_pkg.get_salary(110) FROM dual?",
+  "opts": [
+   "Ошибку: функция приватная и снаружи не видна",
+   "3200",
+   "NULL",
+   "3200, но только для владельца схемы"
+  ],
+  "a": 0,
+  "why": "Публично только то, что есть в спецификации. Всё, что объявлено лишь в теле, доступно только подпрограммам пакета — снаружи будет ошибка: в SQL — <code>ORA-00904: invalid identifier</code>, в PL/SQL — <code>PLS-00302: component 'GET_SALARY' must be declared</code>. Это и есть инкапсуляция.",
+  "section": "lessons"
+ },
+ {
+  "id": "l19-pls00323",
+  "topic": "Тело пакета",
+  "q": "В спецификации объявлены функции f и g, а в теле реализована только f. Что произойдёт?",
+  "opts": [
+   "Тело создастся с ошибкой PLS-00323 и будет INVALID",
+   "Тело скомпилируется, g будет возвращать NULL",
+   "Тело скомпилируется, ошибка будет только при вызове g",
+   "Oracle сам удалит g из спецификации"
+  ],
+  "a": 0,
+  "why": "Тело обязано реализовать всё, что обещано в спецификации: <code>PLS-00323: subprogram or cursor 'G' is declared in a package specification and must be defined in the package body</code>. С INVALID-телом не работает ни одна функция пакета.",
+  "section": "lessons"
+ },
+ {
+  "id": "l19-state",
+  "topic": "Состояние",
+  "q": "Сессия A вызвала order_seq_pkg.next_id три раза (g_issued = 3). Что вернёт order_seq_pkg.issued_count в только что открытой сессии B?",
+  "opts": [
+   "0",
+   "3",
+   "NULL",
+   "Ошибку: пакет уже занят сессией A"
+  ],
+  "a": 0,
+  "why": "Переменные пакета живут в памяти <b>каждой сессии</b> отдельно. В сессии B пакет инициализируется заново, <code>g_issued := 0</code>. Поэтому пакетная переменная не заменяет SEQUENCE и таблицы, если данные нужны всем.",
+  "section": "lessons"
+ },
+ {
+  "id": "l19-init",
+  "topic": "Инициализация",
+  "q": "Когда выполняется секция инициализации пакета (BEGIN ... END в конце тела)?",
+  "opts": [
+   "Один раз в сессии — при первом обращении к пакету",
+   "При каждом вызове любой функции пакета",
+   "Один раз — при CREATE PACKAGE BODY",
+   "При каждом COMMIT"
+  ],
+  "a": 0,
+  "why": "Секция инициализации запускается при первом обращении к пакету в сессии (а также после сброса состояния, например после ORA-04068). Здесь загружают настройки и кэши, а не выполняют действия «на каждый вызов».",
+  "section": "lessons"
+ },
+ {
+  "id": "l19-overload",
+  "topic": "Перегрузка",
+  "q": "В пакете есть f(p NUMBER) и f(p INTEGER). Что будет при вызове pkg.f(5)?",
+  "opts": [
+   "PLS-00307: too many declarations of 'F' match this call",
+   "Вызовется версия с INTEGER",
+   "Вызовется версия с NUMBER",
+   "Пакет не скомпилируется"
+  ],
+  "a": 0,
+  "why": "INTEGER — подтип NUMBER, и аргумент 5 подходит к обеим версиям. Спецификация и тело компилируются, а вызов неоднозначен — <code>PLS-00307</code>. Перегружать нужно по разным семействам типов (NUMBER / VARCHAR2 / DATE) или по числу параметров.",
+  "section": "lessons"
+ },
+ {
+  "id": "l19-04068",
+  "topic": "ORA-04068",
+  "q": "Пакет хранит счётчик в переменной. Ты перекомпилировал его тело. Что увидит другая сессия, которая уже вызывала пакет, при следующем вызове?",
+  "opts": [
+   "ORA-04068: existing state of packages has been discarded — один раз, повторный вызов работает со сброшенным состоянием",
+   "Ничего — продолжит работать со старой версией кода",
+   "Ошибку при каждом вызове, пока сессия не переподключится",
+   "Новый код, а значение счётчика сохранится"
+  ],
+  "a": 0,
+  "why": "Перекомпиляция stateful-пакета делает состояние в чужих сессиях недействительным. Первый вызов падает с <code>ORA-04068</code> (внутри того же вызова её не обойти), состояние сбрасывается, и следующий вызов уже идёт с новым кодом и инициализацией с нуля. Пакеты без переменных этой проблемы не имеют.",
+  "section": "lessons"
+ },
+ {
+  "id": "l19-deps",
+  "topic": "Зависимости",
+  "q": "Процедура report_prc вызывает emp_api_pkg.full_name. Ты изменил только ТЕЛО пакета. Что станет со статусом report_prc?",
+  "opts": [
+   "Останется VALID: она зависит только от спецификации",
+   "Станет INVALID и перекомпилируется при следующем вызове",
+   "Станет INVALID навсегда, нужно пересоздавать",
+   "Будет удалена"
+  ],
+  "a": 0,
+  "why": "Внешний код зависит от спецификации пакета, а не от тела. Поэтому реализацию можно менять, не трогая сотни зависимых объектов, — один из главных аргументов за пакеты. Изменишь спецификацию — инвалидируется и тело, и всё, что её использует.",
+  "section": "lessons"
+ },
+ {
+  "id": "l20-sparse-for",
+  "topic": "Коллекции",
+  "q": "Что произойдёт при выполнении блока?",
+  "code": "DECLARE\n  TYPE t IS TABLE OF NUMBER INDEX BY PLS_INTEGER;\n  v t;\nBEGIN\n  v(1) := 10; v(5) := 50; v(9) := 90;\n  FOR i IN 1 .. v.COUNT LOOP\n    DBMS_OUTPUT.PUT_LINE(v(i));\n  END LOOP;\nEND;",
+  "opts": [
+   "Напечатает 10 и упадёт с NO_DATA_FOUND",
+   "Напечатает 10, 50, 90",
+   "Напечатает 10, NULL, NULL",
+   "Не скомпилируется"
+  ],
+  "a": 0,
+  "why": "Коллекция разреженная: ключи 1, 5, 9, а <code>COUNT = 3</code>. Цикл идёт по 1, 2, 3, и на <code>v(2)</code> чтение несуществующего ключа бросает <code>ORA-01403</code>. Обходить надо через <code>FIRST</code>/<code>NEXT</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l20-assoc-missing",
+  "topic": "Коллекции",
+  "q": "Ассоциативный массив v_sal заполнен по emp_id отдела 30. Что вернёт v_sal(999)?",
+  "opts": [
+   "Исключение NO_DATA_FOUND (ORA-01403)",
+   "NULL",
+   "0",
+   "ORA-06533: Subscript beyond count"
+  ],
+  "a": 0,
+  "why": "Чтение отсутствующего ключа ассоциативного массива бросает <code>NO_DATA_FOUND</code>, а не возвращает NULL. Перед чтением проверяй <code>v.EXISTS(k)</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l20-uninit",
+  "topic": "Коллекции",
+  "q": "Что будет при выполнении этого кода?",
+  "code": "DECLARE\n  TYPE t_names IS TABLE OF VARCHAR2(60);\n  v t_names;\nBEGIN\n  v.EXTEND;\nEND;",
+  "opts": [
+   "ORA-06531: Reference to uninitialized collection",
+   "Появится первый элемент со значением NULL",
+   "Ничего: EXTEND на NULL-коллекции игнорируется",
+   "ORA-06532: subscript outside of limit"
+  ],
+  "a": 0,
+  "why": "Nested table без конструктора равна NULL. Любой метод, кроме <code>EXISTS</code>, на ней падает с <code>ORA-06531</code>. Нужно <code>v t_names := t_names();</code>. Ассоциативным массивам конструктор не нужен.",
+  "section": "lessons"
+ },
+ {
+  "id": "l20-next",
+  "topic": "Методы коллекций",
+  "q": "Коллекция содержит ключи 1, 5 и 9. Что вернут v.NEXT(3) и v.NEXT(9)?",
+  "opts": [
+   "5 и NULL",
+   "NULL и NULL",
+   "Ошибку NO_DATA_FOUND и NULL",
+   "4 и 10"
+  ],
+  "a": 0,
+  "why": "<code>NEXT(k)</code> возвращает следующий <b>существующий</b> ключ больше k, даже если самого k нет. После последнего ключа — NULL; на этом и построен цикл <code>WHILE i IS NOT NULL</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l20-delete-count",
+  "topic": "Методы коллекций",
+  "q": "Что напечатает блок?",
+  "code": "DECLARE\n  TYPE t_names IS TABLE OF VARCHAR2(60);\n  v t_names := t_names('QA', 'Sales', 'HR');\nBEGIN\n  v.DELETE(2);\n  DBMS_OUTPUT.PUT_LINE(v.COUNT || ' ' || v.LAST);\nEND;",
+  "opts": [
+   "2 3",
+   "2 2",
+   "3 3",
+   "3 2"
+  ],
+  "a": 0,
+  "why": "<code>DELETE(2)</code> убирает элемент, но не сдвигает остальные: ключи 1 и 3. <code>COUNT</code> считает существующие (2), <code>LAST</code> — наибольший ключ (3). Коллекция стала разреженной.",
+  "section": "lessons"
+ },
+ {
+  "id": "l20-varray-delete",
+  "topic": "VARRAY",
+  "q": "Что будет, если для VARRAY вызвать v.DELETE(2)?",
+  "opts": [
+   "Ошибка компиляции PLS-00306: поштучно из VARRAY удалять нельзя",
+   "Удалится второй элемент, появится дырка",
+   "Элементы после второго сдвинутся влево",
+   "Удалятся все элементы начиная со второго"
+  ],
+  "a": 0,
+  "why": "VARRAY всегда плотный. Ему доступны только <code>DELETE</code> без аргументов (очистить всё) и <code>TRIM</code> (срезать с конца). Выход за потолок при EXTEND — <code>ORA-06532</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l20-varchar-order",
+  "topic": "Коллекции",
+  "q": "В словарь INDEX BY VARCHAR2 добавили ключи в порядке 'Sales', 'Analytics', 'QA'. В каком порядке их отдаст обход FIRST/NEXT?",
+  "opts": [
+   "Analytics, QA, Sales",
+   "Sales, Analytics, QA",
+   "В случайном порядке",
+   "QA, Sales, Analytics"
+  ],
+  "a": 0,
+  "why": "Ассоциативный массив хранит ключи отсортированными: обход идёт по возрастанию ключа, а не в порядке добавления. Для строк порядок — как у сравнения строк в сессии (у нас BINARY).",
+  "section": "lessons"
+ },
+ {
+  "id": "l20-local-type",
+  "topic": "SQL-типы",
+  "q": "Почему SELECT … FROM TABLE(v) внутри блока падает с PLS-00642?",
+  "opts": [
+   "Тип v объявлен локально в блоке, а SQL понимает только SQL-типы (CREATE TYPE) или типы из спецификации пакета",
+   "TABLE() работает только с VARRAY",
+   "Нужно писать TABLE(v.COUNT)",
+   "В анонимных блоках нельзя делать SELECT"
+  ],
+  "a": 0,
+  "why": "Сообщение: <code>local collection types not allowed in SQL statements</code>. Создай тип в схеме — <code>CREATE TYPE coll_num_tab AS TABLE OF NUMBER</code> — или объяви его в спецификации пакета.",
+  "section": "lessons"
+ },
+ {
+  "id": "l21-notfound",
+  "topic": "BULK COLLECT",
+  "q": "В employees 20 строк. Сколько emp_id обработает этот цикл?",
+  "code": "OPEN c_emp;\nLOOP\n  FETCH c_emp BULK COLLECT INTO v_ids LIMIT 6;\n  EXIT WHEN c_emp%NOTFOUND;\n  -- обработка v_ids\nEND LOOP;",
+  "opts": [
+   "18",
+   "20",
+   "24",
+   "6"
+  ],
+  "a": 0,
+  "why": "Четвёртый FETCH вернёт 2 строки и сразу выставит <code>%NOTFOUND = TRUE</code>, потому что строк меньше LIMIT. <code>EXIT</code> срабатывает до обработки — 2 строки теряются. Правильно: <code>EXIT WHEN v_ids.COUNT = 0</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l21-empty",
+  "topic": "BULK COLLECT",
+  "q": "Что произойдёт, если SELECT … BULK COLLECT INTO не нашёл ни одной строки?",
+  "opts": [
+   "Коллекция будет пустой (COUNT = 0), исключения нет",
+   "Исключение NO_DATA_FOUND",
+   "Исключение TOO_MANY_ROWS",
+   "Коллекция останется NULL, и COUNT упадёт с ORA-06531"
+  ],
+  "a": 0,
+  "why": "В отличие от обычного <code>SELECT … INTO</code>, BULK COLLECT на пустом результате не бросает <code>NO_DATA_FOUND</code>. После него проверяют <code>COUNT</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l21-why",
+  "topic": "BULK COLLECT",
+  "q": "Почему BULK COLLECT и FORALL быстрее построчного цикла?",
+  "opts": [
+   "Меньше переключений контекста между движками PL/SQL и SQL",
+   "Они выполняются параллельно на нескольких ядрах",
+   "Они не пишут redo и undo",
+   "Они обходят индексы и триггеры"
+  ],
+  "a": 0,
+  "why": "Каждый построчный FETCH или INSERT — переход из PL/SQL в SQL и обратно. Bulk-операции передают целую коллекцию за один переход. Триггеры, ограничения и журналирование работают как обычно.",
+  "section": "lessons"
+ },
+ {
+  "id": "l21-forall-body",
+  "topic": "FORALL",
+  "q": "Что можно написать внутри FORALL?",
+  "opts": [
+   "Ровно одну DML-команду: INSERT, UPDATE, DELETE или MERGE",
+   "Любой PL/SQL-код, как в обычном цикле",
+   "Только INSERT",
+   "Несколько DML-команд в BEGIN … END"
+  ],
+  "a": 0,
+  "why": "FORALL — не цикл, а одна массовая отправка команды в SQL. <code>FORALL … DBMS_OUTPUT.PUT_LINE(…)</code> даже не скомпилируется (<code>PLS-00103</code>).",
+  "section": "lessons"
+ },
+ {
+  "id": "l21-24381",
+  "topic": "FORALL",
+  "q": "Какое исключение выбросит FORALL … SAVE EXCEPTIONS, если на двух элементах были ошибки?",
+  "opts": [
+   "Одно ORA-24381: error(s) in array DML — после обработки всей коллекции",
+   "Первую же ошибку, как без SAVE EXCEPTIONS",
+   "Никакого: ошибки молча пропускаются",
+   "Две ошибки подряд по одной на элемент"
+  ],
+  "a": 0,
+  "why": "SAVE EXCEPTIONS копит ошибки и в конце бросает <code>ORA-24381</code>. Его ловят через <code>PRAGMA EXCEPTION_INIT(e, -24381)</code>, а подробности читают из <code>SQL%BULK_EXCEPTIONS</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l21-error-index",
+  "topic": "FORALL",
+  "q": "Что хранит SQL%BULK_EXCEPTIONS(j).ERROR_INDEX?",
+  "opts": [
+   "Номер элемента коллекции (итерации FORALL), на котором произошла ошибка",
+   "ROWID строки, которую не удалось вставить",
+   "Значение первичного ключа строки",
+   "Отрицательный код ошибки"
+  ],
+  "a": 0,
+  "why": "Это номер итерации. Сам элемент — <code>v(SQL%BULK_EXCEPTIONS(j).ERROR_INDEX)</code>. Код ошибки лежит в <code>ERROR_CODE</code>, и он без минуса: 2290, а не -2290.",
+  "section": "lessons"
+ },
+ {
+  "id": "l21-no-save",
+  "topic": "FORALL",
+  "q": "FORALL без SAVE EXCEPTIONS вставляет 12 товаров; 12-й нарушает CHECK. Исключение поймано в обработчике, ROLLBACK не делали. Сколько строк в таблице?",
+  "opts": [
+   "11 — успешные итерации до ошибки не откатываются",
+   "0 — FORALL атомарен целиком",
+   "12 — ошибка игнорируется",
+   "Неизвестно: зависит от размера пачки"
+  ],
+  "a": 0,
+  "why": "Откатывается только итерация, вызвавшая ошибку, и на ней FORALL останавливается. Предыдущие 11 вставок остаются в транзакции.",
+  "section": "lessons"
+ },
+ {
+  "id": "l21-sparse",
+  "topic": "FORALL",
+  "q": "После BULK COLLECT из коллекции удалили часть элементов через DELETE(i). Что будет с FORALL i IN 1 .. v.COUNT?",
+  "opts": [
+   "ORA-22160: element at index [N] does not exist — нужен INDICES OF",
+   "Удалённые элементы будут пропущены автоматически",
+   "Вставятся NULL-строки на месте удалённых",
+   "Обработаются только первые COUNT элементов, остальные потеряются без ошибки"
+  ],
+  "a": 0,
+  "why": "Диапазон 1..COUNT предполагает плотную коллекцию. Для разреженной пиши <code>FORALL i IN INDICES OF v</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l22-when-colon",
+  "topic": "Триггеры",
+  "q": "Почему этот триггер не создаётся?",
+  "code": "CREATE OR REPLACE TRIGGER trg_emp_raise_cap_bu\n  BEFORE UPDATE OF salary ON trg_emp_copy\n  FOR EACH ROW\n  WHEN (:NEW.salary > :OLD.salary * 1.2)\nBEGIN\n  :NEW.salary := :OLD.salary * 1.2;\nEND;",
+  "opts": [
+   "В WHEN нужно писать NEW и OLD без двоеточия — ORA-25000",
+   "WHEN нельзя использовать с BEFORE",
+   "Нельзя сравнивать :NEW и :OLD",
+   "В WHEN нельзя умножать"
+  ],
+  "a": 0,
+  "why": "В условии <code>WHEN</code> псевдозаписи пишут без двоеточия: <code>WHEN (NEW.salary &gt; OLD.salary * 1.2)</code>. В теле триггера — с двоеточием. Ошибка: <code>ORA-25000: invalid use of bind variable in trigger WHEN clause</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l22-stmt-zero",
+  "topic": "Триггеры",
+  "q": "На таблице есть AFTER UPDATE триггер уровня команды (без FOR EACH ROW). Выполнили UPDATE, который не затронул ни одной строки. Что с триггером?",
+  "opts": [
+   "Сработает один раз",
+   "Не сработает",
+   "Сработает и бросит NO_DATA_FOUND",
+   "Сработает столько раз, сколько строк в таблице"
+  ],
+  "a": 0,
+  "why": "Триггер уровня команды срабатывает на сам факт команды, даже при 0 строк. Строчный (<code>FOR EACH ROW</code>) в этом случае не сработает ни разу.",
+  "section": "lessons"
+ },
+ {
+  "id": "l22-mutating",
+  "topic": "Триггеры",
+  "q": "Строчный триггер BEFORE UPDATE на trg_emp_copy делает SELECT AVG(salary) FROM trg_emp_copy. Что будет при UPDATE этой таблицы?",
+  "opts": [
+   "ORA-04091: table is mutating",
+   "Вернётся среднее по старым значениям",
+   "Вернётся среднее по новым значениям",
+   "Триггер зациклится"
+  ],
+  "a": 0,
+  "why": "Строчный триггер не может читать изменяемую таблицу. Обход — триггер уровня команды или compound trigger: копить данные в строчных секциях и обрабатывать в <code>AFTER STATEMENT</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l22-after-new",
+  "topic": "Триггеры",
+  "q": "Можно ли в AFTER … FOR EACH ROW триггере написать :NEW.salary := 0?",
+  "opts": [
+   "Нет: ORA-04084 — менять :NEW можно только в BEFORE-триггере",
+   "Да, строка обновится ещё раз",
+   "Да, но только для INSERT",
+   "Нет: :NEW в AFTER-триггере недоступен вовсе"
+  ],
+  "a": 0,
+  "why": "В AFTER-триггере строка уже записана, <code>:NEW</code> доступен только на чтение. Подправлять значения — в BEFORE ROW.",
+  "section": "lessons"
+ },
+ {
+  "id": "l22-commit",
+  "topic": "Триггеры",
+  "q": "Что будет, если внутри триггера написать COMMIT?",
+  "opts": [
+   "ORA-04092: cannot COMMIT in a trigger",
+   "Зафиксируется вся транзакция",
+   "Зафиксируется только запись лога",
+   "COMMIT будет проигнорирован"
+  ],
+  "a": 0,
+  "why": "Триггер — часть транзакции вызвавшей команды и не может её завершить. Если лог должен сохраниться даже при откате, используют процедуру с <code>PRAGMA AUTONOMOUS_TRANSACTION</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l22-truncate",
+  "topic": "Триггеры",
+  "q": "На таблице есть AFTER DELETE триггер аудита. Сработает ли он при TRUNCATE TABLE?",
+  "opts": [
+   "Нет: TRUNCATE — это DDL, DELETE-триггеры не срабатывают",
+   "Да, по разу на каждую строку",
+   "Да, один раз как триггер уровня команды",
+   "TRUNCATE упадёт из-за триггера"
+  ],
+  "a": 0,
+  "why": "TRUNCATE не выполняет построчное удаление и не запускает DML-триггеры. DELETE-триггер при TRUNCATE молчит.",
+  "section": "lessons"
+ },
+ {
+  "id": "l22-order",
+  "topic": "Триггеры",
+  "q": "В каком порядке срабатывают триггеры при UPDATE двух строк?",
+  "opts": [
+   "BEFORE STATEMENT → BEFORE ROW → AFTER ROW → BEFORE ROW → AFTER ROW → AFTER STATEMENT",
+   "BEFORE STATEMENT → BEFORE ROW → BEFORE ROW → AFTER ROW → AFTER ROW → AFTER STATEMENT",
+   "BEFORE ROW → BEFORE STATEMENT → AFTER STATEMENT → AFTER ROW",
+   "Все BEFORE-триггеры, затем все AFTER в алфавитном порядке имён"
+  ],
+  "a": 0,
+  "why": "Команда начинается с BEFORE STATEMENT, затем для каждой строки — BEFORE ROW, изменение, AFTER ROW, и в конце AFTER STATEMENT. Это видно на compound trigger из урока.",
+  "section": "lessons"
+ },
+ {
+  "id": "l22-instead-of",
+  "topic": "Триггеры",
+  "q": "На каком объекте можно создать INSTEAD OF триггер на DML?",
+  "opts": [
+   "Только на представлении",
+   "На любой таблице",
+   "Только на таблице без первичного ключа",
+   "На последовательности"
+  ],
+  "a": 0,
+  "why": "INSTEAD OF — для представлений: триггер перехватывает DML по представлению и выполняет вместо него твой код по базовым таблицам. Такой триггер всегда строчный.",
+  "section": "lessons"
+ },
+ {
+  "id": "l23-mutating-when",
+  "topic": "Мутирующая таблица",
+  "q": "Когда возникает ORA-04091 (table is mutating)?",
+  "opts": [
+   "Строчный триггер читает или меняет таблицу, на которой он висит",
+   "AFTER-триггер уровня оператора читает свою таблицу",
+   "В триггере есть COMMIT",
+   "На одной таблице висят два триггера"
+  ],
+  "a": 0,
+  "why": "Ошибка возникает в триггере <code>FOR EACH ROW</code>, пока оператор ещё меняет таблицу. Statement-триггер срабатывает, когда оператор закончил, и читать таблицу ему можно. COMMIT в триггере даёт другую ошибку — <code>ORA-04092</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l23-compound-section",
+  "topic": "Compound trigger",
+  "q": "В какой секции compound trigger можно читать свою таблицу, чтобы проверить изменённые строки?",
+  "opts": [
+   "AFTER STATEMENT",
+   "BEFORE EACH ROW",
+   "AFTER EACH ROW",
+   "Ни в какой: ORA-04091 будет всё равно"
+  ],
+  "a": 0,
+  "why": "Строчные секции работают, пока таблица «мутирует». Поэтому в них только запоминают ключи в коллекцию, а читают и проверяют в <code>AFTER STATEMENT</code>, когда оператор уже закончен.",
+  "section": "lessons"
+ },
+ {
+  "id": "l23-auto-rollback",
+  "topic": "Автономные транзакции",
+  "q": "Таблица mut_err_log была пустой. Какие записи в ней останутся?",
+  "code": "-- mut_log_error: PRAGMA AUTONOMOUS_TRANSACTION + COMMIT\nBEGIN\n  INSERT INTO mut_err_log (msg) VALUES ('A');\n  mut_log_error('B');\n  ROLLBACK;\nEND;",
+  "opts": [
+   "Только B",
+   "A и B",
+   "Ни одной",
+   "Только A"
+  ],
+  "a": 0,
+  "why": "COMMIT внутри автономной процедуры коммитит только её собственную вставку B. Строка A вставлена основной транзакцией и откатывается её <code>ROLLBACK</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l23-06519",
+  "topic": "Автономные транзакции",
+  "q": "Автономная процедура вставила строку и закончилась без COMMIT и ROLLBACK. Что произойдёт?",
+  "opts": [
+   "ORA-06519, вставка откатится",
+   "Вставка закоммитится автоматически при выходе",
+   "Вставка станет частью основной транзакции",
+   "Строка подождёт COMMIT основной транзакции"
+  ],
+  "a": 0,
+  "why": "Автономная транзакция обязана завершиться до выхода из подпрограммы. Иначе Oracle откатывает её и поднимает <code>ORA-06519: active autonomous transaction detected and rolled back</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l23-auto-trigger",
+  "topic": "Мутирующая таблица",
+  "q": "В строчный триггер, который читает свою таблицу, добавили PRAGMA AUTONOMOUS_TRANSACTION. Что будет при UPDATE?",
+  "opts": [
+   "Ошибки не будет, но триггер увидит данные без изменений текущего UPDATE",
+   "Всё равно ORA-04091",
+   "Триггер увидит уже изменённые строки, проблема решена",
+   "ORA-06519 при каждом срабатывании"
+  ],
+  "a": 0,
+  "why": "Автономная транзакция не видит незакоммиченных изменений основной, поэтому читает старое состояние таблицы. ORA-04091 пропадает, но логика тихо считает неверно. Правильные решения — compound trigger или statement-триггер.",
+  "section": "lessons"
+ },
+ {
+  "id": "l23-commit-trigger",
+  "topic": "Триггеры",
+  "q": "Можно ли написать COMMIT в обычном (не автономном) триггере?",
+  "opts": [
+   "Нет: ORA-04092 cannot COMMIT in a trigger",
+   "Да, закоммитятся только изменения триггера",
+   "Да, закоммитится вся транзакция",
+   "Только в AFTER STATEMENT"
+  ],
+  "a": 0,
+  "why": "Триггер работает внутри чужой транзакции и не может её завершить. Если запись должна пережить откат (аудит, лог), её делают в автономной процедуре, которую вызывает триггер.",
+  "section": "lessons"
+ },
+ {
+  "id": "l23-visibility",
+  "topic": "Автономные транзакции",
+  "q": "Основная транзакция вставила строку и не сделала COMMIT. Затем вызвана автономная функция, которая считает строки этой таблицы. Учтёт ли она новую строку?",
+  "opts": [
+   "Нет, она видит только закоммиченные данные",
+   "Да, это та же сессия",
+   "Да, если функция объявлена в том же блоке",
+   "Учтёт, но не сможет её изменить"
+  ],
+  "a": 0,
+  "why": "Для автономной транзакции основная — как чужая сессия, незакоммиченное ей не видно. Если же автономная попробует изменить строку, заблокированную основной, получится взаимоблокировка <code>ORA-00060</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l23-pragma-where",
+  "topic": "Автономные транзакции",
+  "q": "Куда нельзя поставить PRAGMA AUTONOMOUS_TRANSACTION?",
+  "opts": [
+   "В спецификацию пакета, на весь пакет сразу",
+   "В процедуру внутри тела пакета",
+   "В строчный триггер",
+   "В локальную функцию внутри анонимного блока"
+  ],
+  "a": 0,
+  "why": "PRAGMA ставится на конкретную подпрограмму, триггер или анонимный блок верхнего уровня. На пакет целиком и во вложенный блок <code>BEGIN … END</code> — <code>PLS-00710: Pragma AUTONOMOUS_TRANSACTION cannot be specified here</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l24-ddl-plsql",
+  "topic": "Динамический SQL",
+  "q": "Что будет при выполнении этого блока?",
+  "code": "BEGIN\n  TRUNCATE TABLE dyn_emp;\nEND;",
+  "opts": [
+   "Ошибка компиляции PLS-00103: DDL напрямую в PL/SQL писать нельзя",
+   "Таблица очистится",
+   "Таблица очистится только после COMMIT",
+   "ORA-00942: table or view does not exist"
+  ],
+  "a": 0,
+  "why": "DDL в PL/SQL выполняют только через <code>EXECUTE IMMEDIATE 'TRUNCATE TABLE dyn_emp'</code>. Блок даже не скомпилируется: <code>PLS-00103: Encountered the symbol \"TABLE\"</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l24-bind-table",
+  "topic": "Bind-переменные",
+  "q": "Что вернёт этот блок?",
+  "code": "EXECUTE IMMEDIATE 'SELECT COUNT(*) FROM :t'\n  INTO v USING 'EMPLOYEES';",
+  "opts": [
+   "ORA-00903: invalid table name",
+   "20",
+   "0",
+   "ORA-01008: not all variables bound"
+  ],
+  "a": 0,
+  "why": "Bind-переменной передаётся только значение. Имя таблицы или столбца должно быть в тексте запроса, поэтому его вклеивают, предварительно проверив через <code>DBMS_ASSERT</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l24-bind-twice",
+  "topic": "Bind-переменные",
+  "q": "Что будет при выполнении?",
+  "code": "EXECUTE IMMEDIATE\n  'SELECT COUNT(*) FROM employees\n    WHERE salary > :x OR manager_id = :x'\n  INTO v USING 5000;",
+  "opts": [
+   "ORA-01008: значение для второй метки не передано",
+   "5000 подставится в обе метки",
+   "ORA-00903: invalid table name",
+   "Запрос вернёт 0"
+  ],
+  "a": 0,
+  "why": "В динамическом SQL метки связываются по позиции, а не по имени. Две метки <code>:x</code> — это две позиции, и в USING нужно два значения: <code>USING 5000, 5000</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l24-injection",
+  "topic": "SQL-инъекция",
+  "q": "Почему bind-переменная защищает от SQL-инъекции?",
+  "opts": [
+   "Значение передаётся отдельно от текста и никогда не разбирается как SQL",
+   "Oracle сам экранирует кавычки в склеенной строке",
+   "USING запрещает спецсимволы в значениях",
+   "Bind-переменная проверяется через DBMS_ASSERT"
+  ],
+  "a": 0,
+  "why": "С bind-переменной текст запроса уже разобран, а <code>x' OR '1'='1</code> — просто значение для сравнения. При склейке эта строка становится частью SQL и меняет условие.",
+  "section": "lessons"
+ },
+ {
+  "id": "l24-hardparse",
+  "topic": "Bind-переменные",
+  "q": "Чем, кроме инъекций, плоха склейка значений в текст запроса в цикле?",
+  "opts": [
+   "Каждое значение даёт новый текст SQL: новый hard parse и мусор в кэше курсоров",
+   "Склейка работает только для чисел",
+   "Строка запроса ограничена 4000 символами",
+   "Склеенный запрос нельзя выполнить через EXECUTE IMMEDIATE"
+  ],
+  "a": 0,
+  "why": "Oracle ищет готовый план по точному тексту запроса. <code>… = '1'</code> и <code>… = '2'</code> — разные тексты, каждый разбирается заново. С <code>:c</code> текст один, план переиспользуется.",
+  "section": "lessons"
+ },
+ {
+  "id": "l24-ddl-commit",
+  "topic": "Динамический SQL",
+  "q": "Что станет со строкой 999?",
+  "code": "BEGIN\n  INSERT INTO dyn_emp (emp_id, first_name, last_name, salary)\n  VALUES (999, 'a', 'b', 1);\n  EXECUTE IMMEDIATE 'CREATE TABLE dyn_tmp_x (a NUMBER)';\n  ROLLBACK;\nEND;",
+  "opts": [
+   "Останется в таблице: DDL сделал неявный COMMIT",
+   "Откатится",
+   "Блок упадёт: DDL нельзя выполнять внутри транзакции",
+   "Откатится вместе с созданием dyn_tmp_x"
+  ],
+  "a": 0,
+  "why": "DDL коммитит текущую транзакцию перед своим выполнением. Строка 999 закоммичена, ROLLBACK откатывать уже нечего, и dyn_tmp_x тоже останется.",
+  "section": "lessons"
+ },
+ {
+  "id": "l24-dbms-sql",
+  "topic": "DBMS_SQL",
+  "q": "Когда нужен DBMS_SQL, а не EXECUTE IMMEDIATE?",
+  "opts": [
+   "Когда число столбцов или bind-переменных неизвестно до выполнения",
+   "Для любого DDL",
+   "Когда запрос возвращает больше одной строки",
+   "Когда нужно передать значения через USING"
+  ],
+  "a": 0,
+  "why": "Для DDL хватает EXECUTE IMMEDIATE, для многих строк — <code>OPEN rc FOR 'строка'</code>. DBMS_SQL нужен, когда структура запроса заранее неизвестна: он умеет описать столбцы (<code>DESCRIBE_COLUMNS</code>) и связать переменное число bind-переменных.",
+  "section": "lessons"
+ },
+ {
+  "id": "l24-assert",
+  "topic": "DBMS_ASSERT",
+  "q": "Что вернёт DBMS_ASSERT.SIMPLE_SQL_NAME('employees where 1=0')?",
+  "opts": [
+   "Ошибку ORA-44003: invalid SQL name",
+   "'employees'",
+   "'\"employees where 1=0\"'",
+   "NULL"
+  ],
+  "a": 0,
+  "why": "SIMPLE_SQL_NAME пропускает только строку, похожую на одно имя. Пробелы и выражения дают <code>ORA-44003</code>. Поэтому вклеить «хвост» с условием в имя таблицы не получится.",
+  "section": "lessons"
+ },
+ {
+  "id": "l25-case",
+  "topic": "Словарь данных",
+  "q": "Что вернёт запрос, если функция dict_prod_price создана обычным CREATE FUNCTION dict_prod_price?",
+  "code": "SELECT status\n  FROM user_objects\n WHERE object_name = 'dict_prod_price';",
+  "opts": [
+   "Ни одной строки",
+   "VALID",
+   "INVALID",
+   "ORA-00942: table or view does not exist"
+  ],
+  "a": 0,
+  "why": "Имена без двойных кавычек хранятся в словаре в верхнем регистре. Нужно <code>WHERE object_name = 'DICT_PROD_PRICE'</code> или <code>UPPER(…)</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l25-invalid-call",
+  "topic": "INVALID",
+  "q": "После ALTER TABLE функция стала INVALID, но столбцы, которые она читает, на месте. Что будет при её вызове?",
+  "opts": [
+   "Oracle сам перекомпилирует её, и вызов пройдёт",
+   "ORA-06575, пока не выполнишь ALTER FUNCTION … COMPILE",
+   "Функция вернёт NULL",
+   "Функцию придётся пересоздать через CREATE OR REPLACE"
+  ],
+  "a": 0,
+  "why": "INVALID значит «нужно перепроверить». При первом вызове Oracle компилирует объект сам. Ошибка будет, только если компиляция не проходит: например, нужный столбец переименовали.",
+  "section": "lessons"
+ },
+ {
+  "id": "l25-dynamic-deps",
+  "topic": "user_dependencies",
+  "q": "Процедура читает таблицу только через EXECUTE IMMEDIATE. Что покажет user_dependencies?",
+  "opts": [
+   "Связи с таблицей не будет",
+   "Связь с типом DYNAMIC",
+   "Связь появится после первого вызова процедуры",
+   "Обычную связь, как для статического SQL"
+  ],
+  "a": 0,
+  "why": "Зависимости строятся при компиляции, а текст динамического SQL компилятор не разбирает. Поэтому ALTER таблицы не сделает такую процедуру INVALID, а несовместимое изменение проявится только при вызове. Найти её можно только поиском по <code>user_source</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l25-backtrace",
+  "topic": "Стек ошибок",
+  "q": "Как в обработчике WHEN OTHERS узнать объект и номер строки, где возникла ошибка?",
+  "opts": [
+   "DBMS_UTILITY.FORMAT_ERROR_BACKTRACE",
+   "SQLERRM",
+   "SQLCODE",
+   "DBMS_UTILITY.FORMAT_CALL_STACK"
+  ],
+  "a": 0,
+  "why": "SQLCODE и SQLERRM говорят, что случилось. FORMAT_CALL_STACK показывает, где выполнение сейчас, то есть в обработчике. Место ошибки даёт только <code>FORMAT_ERROR_BACKTRACE</code>: <code>ORA-06512: at \"…\", line N</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l25-clob-concat",
+  "topic": "CLOB",
+  "q": "v_clob — CLOB длиной 32768 символов. Что произойдёт?",
+  "code": "v_clob := v_clob || 1;",
+  "opts": [
+   "ORA-06502: результат конкатенации с числом получился VARCHAR2",
+   "Длина станет 32769",
+   "ORA-01722: invalid number",
+   "Допишется символ CHR(1)"
+  ],
+  "a": 0,
+  "why": "Для <code>CLOB || NUMBER</code> Oracle выбирает VARCHAR2-версию конкатенации, а она ограничена 32767. <code>v_clob || TO_CHAR(1)</code> или <code>DBMS_LOB.APPEND</code> работают.",
+  "section": "lessons"
+ },
+ {
+  "id": "l25-lob-substr",
+  "topic": "CLOB",
+  "q": "Что вернёт DBMS_LOB.SUBSTR(TO_CLOB('100;Karimov;12000'), 3, 5)?",
+  "opts": [
+   "Kar",
+   "100",
+   "0;K",
+   ";Ka"
+  ],
+  "a": 0,
+  "why": "У <code>DBMS_LOB.SUBSTR</code> порядок обратный обычному SUBSTR: сначала сколько символов (3), потом с какой позиции (5). С 5-й позиции начинается Karimov.",
+  "section": "lessons"
+ },
+ {
+  "id": "l25-utl-file",
+  "topic": "UTL_FILE",
+  "q": "Что нужно, чтобы PL/SQL записал файл на сервер через UTL_FILE?",
+  "opts": [
+   "Объект DIRECTORY и права READ/WRITE на него",
+   "Только право CREATE JOB",
+   "Ничего: достаточно указать полный путь к файлу",
+   "Право CREATE ANY TABLE"
+  ],
+  "a": 0,
+  "why": "UTL_FILE пишет только в каталоги, на которые есть объект <code>DIRECTORY</code> (<code>CREATE DIRECTORY … AS '/path'</code>, делает DBA). Пользователю выдают <code>GRANT READ, WRITE ON DIRECTORY …</code>. Произвольные пути запрещены.",
+  "section": "lessons"
+ },
+ {
+  "id": "l25-scheduler",
+  "topic": "DBMS_SCHEDULER",
+  "q": "Чем в современном Oracle запускают процедуру по расписанию, например каждую ночь?",
+  "opts": [
+   "DBMS_SCHEDULER.CREATE_JOB (нужно право CREATE JOB)",
+   "Триггером AFTER LOGON",
+   "Пакетом UTL_FILE",
+   "DBMS_OUTPUT.ENABLE с интервалом"
+  ],
+  "a": 0,
+  "why": "DBMS_SCHEDULER создаёт задания с расписанием (<code>repeat_interval =&gt; 'FREQ=DAILY; BYHOUR=2'</code>), ведёт историю запусков в <code>user_scheduler_job_run_details</code>. Старый DBMS_JOB оставлен для совместимости.",
+  "section": "lessons"
+ },
+ {
+  "id": "l26-explain-exec",
+  "topic": "EXPLAIN PLAN",
+  "q": "Выполняет ли EXPLAIN PLAN FOR сам запрос?",
+  "opts": [
+   "Нет, только записывает предполагаемый план в PLAN_TABLE",
+   "Да, и записывает фактическое время выполнения",
+   "Да, но не возвращает строки",
+   "Выполняет только SELECT, а DML — нет"
+  ],
+  "a": 0,
+  "why": "EXPLAIN PLAN только строит план и кладёт его в PLAN_TABLE. Поэтому так можно объяснить и тяжёлый UPDATE, ничего не меняя. Реальный план выполненного запроса показывает <code>DBMS_XPLAN.DISPLAY_CURSOR</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l26-trunc",
+  "topic": "Индексы",
+  "q": "По order_date есть обычный индекс. Будет ли он использован?",
+  "code": "SELECT *\n  FROM plan_orders\n WHERE TRUNC(order_date) = DATE '2024-03-01';",
+  "opts": [
+   "Нет: столбец обёрнут функцией, нужен диапазон или функциональный индекс",
+   "Да, TRUNC индексу не мешает",
+   "Да, если дата без времени",
+   "Нет: индексы по DATE не работают с равенством"
+  ],
+  "a": 0,
+  "why": "В индексе лежат значения order_date, а сравнивается TRUNC(order_date). Решения: <code>order_date &gt;= DATE '2024-03-01' AND order_date &lt; DATE '2024-03-02'</code> или индекс <code>ON plan_orders (TRUNC(order_date))</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l26-implicit",
+  "topic": "Неявное преобразование",
+  "q": "cust_code — VARCHAR2 с индексом. Какой будет план?",
+  "code": "SELECT *\n  FROM plan_orders\n WHERE cust_code = 123;",
+  "opts": [
+   "TABLE ACCESS FULL с filter TO_NUMBER(\"CUST_CODE\")=123",
+   "INDEX RANGE SCAN по plan_orders_cust_ix",
+   "Ошибка ORA-01722 ещё до выполнения",
+   "INDEX UNIQUE SCAN"
+  ],
+  "a": 0,
+  "why": "При сравнении строки с числом Oracle приводит к числу столбец, а не литерал. Получается функция над столбцом, индекс не используется. Правильно — <code>cust_code = '123'</code>.",
+  "section": "lessons"
+ },
+ {
+  "id": "l26-full-bad",
+  "topic": "Планы",
+  "q": "Оптимизатор выбрал TABLE ACCESS FULL, хотя подходящий индекс есть. Это всегда ошибка?",
+  "opts": [
+   "Нет: когда нужна большая доля строк, полное чтение дешевле",
+   "Да, индекс всегда быстрее",
+   "Да, значит индекс повреждён",
+   "Нет, но только для таблиц меньше 1000 строк"
+  ],
+  "a": 0,
+  "why": "По индексу каждая строка — отдельное чтение блока таблицы. Если нужна четверть таблицы, прочитать её подряд дешевле. FULL — проблема только когда выбирается малая доля строк, а индекс не используется из-за функции, типа или статистики.",
+  "section": "lessons"
+ },
+ {
+  "id": "l26-hash",
+  "topic": "Соединения",
+  "q": "Когда HASH JOIN обычно выгоднее NESTED LOOPS?",
+  "opts": [
+   "Соединяются большие наборы по условию равенства",
+   "Во внешнем наборе 3 строки, а у внутренней таблицы есть индекс",
+   "Условие соединения — неравенство (< или >)",
+   "Таблицы лежат в разных схемах"
+  ],
+  "a": 0,
+  "why": "NESTED LOOPS хорош для малого внешнего набора и индекса на внутреннем. HASH JOIN строит хэш-таблицу по меньшему набору и подходит для больших объёмов, но только для равенства. Для неравенств — NESTED LOOPS или MERGE JOIN.",
+  "section": "lessons"
+ },
+ {
+  "id": "l26-hint-alias",
+  "topic": "Хинты",
+  "q": "Что будет с этим хинтом?",
+  "code": "SELECT /*+ FULL(plan_orders) */ *\n  FROM plan_orders p\n WHERE order_id = 777;",
+  "opts": [
+   "Хинт молча проигнорируется: нужен алиас p, план останется по индексу",
+   "Будет TABLE ACCESS FULL",
+   "Ошибка: неизвестный хинт",
+   "Ошибка: у таблицы есть алиас"
+  ],
+  "a": 0,
+  "why": "Если у таблицы есть алиас, хинт должен ссылаться на алиас: <code>/*+ FULL(p) */</code>. Неверный хинт — просто комментарий, Oracle о нём не предупреждает.",
+  "section": "lessons"
+ },
+ {
+  "id": "l26-stats",
+  "topic": "Статистика",
+  "q": "Зачем вызывать DBMS_STATS.GATHER_TABLE_STATS после большой загрузки данных?",
+  "opts": [
+   "Чтобы оптимизатор знал реальный объём и распределение данных и строил верные планы",
+   "Чтобы перестроить индексы",
+   "Чтобы закоммитить загрузку",
+   "Чтобы освободить место в табличном пространстве"
+  ],
+  "a": 0,
+  "why": "План строится по статистике в словаре (num_rows, число различных значений и т.д.), а не по живым данным. После загрузки она устарела, и оптимизатор может выбрать план для таблицы, которой уже нет.",
+  "section": "lessons"
+ },
+ {
+  "id": "l26-hardparse",
+  "topic": "Bind-переменные",
+  "q": "Сколько разных текстов SQL (и hard parse) даст такой цикл?",
+  "code": "FOR i IN 1 .. 1000 LOOP\n  EXECUTE IMMEDIATE\n    'SELECT COUNT(*) FROM plan_orders WHERE cust_code = '''\n    || i || '''' INTO v;\nEND LOOP;",
+  "opts": [
+   "До 1000: каждый текст новый",
+   "1: Oracle сам заменит значение на bind",
+   "2: первый вызов и все остальные",
+   "0: динамический SQL не разбирается"
+  ],
+  "a": 0,
+  "why": "Кэш курсоров ищет запрос по точному тексту. Литералы '1', '2', … дают 1000 разных текстов. С <code>WHERE cust_code = :c</code> и <code>USING TO_CHAR(i)</code> текст один. (Параметр CURSOR_SHARING=FORCE мог бы заменять литералы, но по умолчанию он EXACT.)",
+  "section": "lessons"
  }
 ]

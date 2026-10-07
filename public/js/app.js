@@ -502,12 +502,27 @@ function renderError(message, ms) {
   return `<div class="msg bad"><pre>${esc(message)}</pre></div>${ms != null ? `<div class="res-meta"><span>${ms} мс</span></div>` : ""}`;
 }
 
-function renderCheck(r, next) {
+const CHECK_MODE = {
+  rows: "проверка: строки результата",
+  output: "проверка: вывод DBMS_OUTPUT",
+  verify: "проверка: результат команды",
+};
+
+function renderCheck(r, next, lesson) {
   if (r.ok) {
     return `<div class="msg ok"><b>✓ Верно.</b> Шаг отмечен пройденным.
       ${next ? `<div class="next"><a class="btn ok" href="#/step/${next.id}">Следующий шаг: ${esc(next.title)} →</a></div>` : ""}</div>`;
   }
   const out = [r.error ? renderError(r.message) : `<div class="msg bad">${esc(r.message)}</div>`];
+  if (lesson?.setup && /ORA-00942|ORA-04043|PLS-00201|ORA-00955/.test(r.message || "")) {
+    out.push(`<div class="msg">Похоже, не хватает таблиц урока или объект уже существует. Нажми «Подготовить таблицы урока» слева и попробуй снова.</div>`);
+  }
+  if (r.output) {
+    out.push(`<div class="diff">
+      <div><div class="sub">Нужно</div><pre class="out">${esc(r.output.expected.join("\n")) || "<пусто>"}</pre></div>
+      <div><div class="sub">У тебя</div><pre class="out">${esc(r.output.got.join("\n")) || "<пусто>"}</pre></div>
+    </div>`);
+  }
   if (r.missing?.length) {
     out.push(`<div class="sub">Этих строк не хватает (до трёх):</div>`);
     out.push(tableHtml(r.missing[0].map((_, i) => r.columns?.[i] ?? `#${i + 1}`), r.missing));
@@ -690,16 +705,27 @@ function viewHome() {
         <a class="card glow" href="#/console"><span class="q-ic">${icon("terminal")}</span><h3>Консоль</h3><p>Свободные запросы к своей схеме</p></a>
       </section>
 
-      <div class="section-head"><h2>Уроки</h2><a href="#/lessons">Вся программа →</a></div>
-      ${lessonCards()}
+      <div class="section-head"><h2>Уроки</h2><a href="#/lessons">Вся программа · ${DATA.lessons.length} →</a></div>
+      ${lessonCards(homeLessons())}
     </div>`;
 
   $("goal").onchange = (e) => { mark("goal", +e.target.value); viewHome(); };
   bindTopicButtons();
 }
 
-function lessonCards() {
-  return `<div class="lessons">${DATA.lessons.map((l) => {
+function homeLessons() {
+  const next = nextUp();
+  const i = next ? DATA.lessons.findIndex((l) => l.id === next.lesson.id) : DATA.lessons.length - 3;
+  return DATA.lessons.slice(Math.max(0, i), Math.max(0, i) + 3);
+}
+
+const BLOCKS = [
+  { title: "Блок 1 · SQL на Oracle", from: 1, to: 12, text: "Запросы: от SELECT до аналитики и иерархий." },
+  { title: "Блок 2 · PL/SQL", from: 13, to: 99, text: "Блоки, курсоры, исключения, подпрограммы, пакеты, коллекции, триггеры, динамический SQL и производительность." },
+];
+
+function lessonCards(list = DATA.lessons) {
+  return `<div class="lessons">${list.map((l) => {
     const d = l.steps.filter(isDone).length;
     const full = d === l.steps.length;
     return `
@@ -731,11 +757,57 @@ function viewLessons() {
           <p class="lede">Один шаг — одна тема: теория, пример, задача и автопроверка прямо в Oracle. Пройдено ${steps.filter(isDone).length} из ${steps.length} шагов.</p>
         </div>
       </div>
-      ${lessonCards()}
+      ${BLOCKS.map((b) => {
+        const ls = DATA.lessons.filter((l) => +l.num >= b.from && +l.num <= b.to);
+        if (!ls.length) return "";
+        const st = ls.flatMap((l) => l.steps);
+        const d = st.filter(isDone).length;
+        return `<div class="section-head"><h2>${b.title}</h2><a>${d}/${st.length} шагов</a></div>
+          <p class="lede" style="margin:-6px 0 16px">${b.text}</p>
+          ${lessonCards(ls)}`;
+      }).join("")}
       ${ahead.length ? `
         <div class="section-head"><h2>Дальше по программе</h2></div>
         <div class="roadmap">${ahead.map(([n, t]) => `<div class="road-item ${+n >= 13 ? "pl" : ""}">${icon("lock", "sm")}<span class="n">${n}</span><span>${esc(t)}</span></div>`).join("")}</div>` : ""}
     </div>`;
+}
+
+/* ================= песочница урока ================= */
+
+function sandboxHtml(l) {
+  if (!l.setup) return "";
+  return `<div class="sandbox">
+    ${icon("database", "sm")}
+    <span>Урок работает с <b>таблицами-песочницами</b> — копиями учебных данных, которые можно портить. Нажми перед началом, а если что-то сломал — нажми снова, всё вернётся в исходное состояние.</span>
+    <button class="btn sm" type="button" data-setup="${l.id}">Подготовить таблицы урока</button>
+  </div>`;
+}
+
+function bindSandbox(root = app) {
+  root.querySelectorAll("[data-setup]").forEach((b) => (b.onclick = async () => {
+    const label = b.textContent;
+    b.disabled = true;
+    b.textContent = "Готовлю…";
+    try {
+      await api("POST", "/api/sql/setup", { lessonId: b.dataset.setup });
+      b.innerHTML = `${icon("check", "sm")} Готово`;
+    } catch (e) {
+      if (e.status === 401) { USER = null; return viewAuth("Сессия истекла — войди снова."); }
+      b.textContent = "Ошибка — ещё раз";
+      alertBox(b, e.message);
+    } finally {
+      b.disabled = false;
+      setTimeout(() => { if (b.isConnected) b.textContent = label; }, 2500);
+    }
+  }));
+}
+
+function alertBox(after, message) {
+  const box = document.createElement("div");
+  box.className = "msg bad";
+  box.style.marginTop = "10px";
+  box.innerHTML = `<pre>${esc(message)}</pre>`;
+  after.closest(".sandbox")?.after(box);
 }
 
 /* ================= экран: обзор урока ================= */
@@ -752,6 +824,7 @@ function viewLesson(id) {
       <h1>${esc(l.title)}</h1>
       <p class="lede">${esc(l.subtitle)}</p>
       <div class="meter ${d === l.steps.length ? "ok" : ""}" style="margin:-10px 0 22px"><i style="width:${(d / l.steps.length) * 100}%"></i></div>
+      ${sandboxHtml(l)}
       <div class="card step-list">
         ${l.steps.map((s, i) => {
           const st = stepState(s);
@@ -763,6 +836,7 @@ function viewLesson(id) {
         }).join("")}
       </div>
     </div>`;
+  bindSandbox();
 }
 
 /* ================= экран: шаг ================= */
@@ -803,7 +877,8 @@ function viewStep(id) {
   const right = SQL_ENABLED
     ? `
       <div class="ed-head">
-        <span class="lang">Oracle · схема PLSQL</span>
+        <span class="lang">Oracle</span>
+        ${s.check ? `<span class="mode" title="Как проверяется решение">${CHECK_MODE[s.check.mode || "rows"]}</span>` : ""}
         <span class="keys"><kbd>${MOD} ↵</kbd> выполнить${s.check ? ` · <kbd>${MOD} ⇧ ↵</kbd> проверить` : ""}</span>
       </div>
       <div class="ed" id="ed"></div>
@@ -835,6 +910,7 @@ function viewStep(id) {
           <h1>${esc(s.title)}</h1>
           <div class="theory">${s.theory}</div>
           ${examples ? `<div class="examples">${examples}</div>` : ""}
+          ${sandboxHtml(lesson)}
           <div class="task"><span class="eyebrow">${icon("target", "sm")} задание</span>${esc(s.task)}</div>
           ${mistakes}
           <details class="sol"><summary>Показать решение</summary>${codeBlock(s.solution)}</details>
@@ -846,6 +922,7 @@ function viewStep(id) {
       <section class="pane right">${right}</section>
     </div>`;
 
+  bindSandbox();
   const markBtn = $("mark");
   if (markBtn) markBtn.onclick = () => {
     const k = "s:" + s.id;
@@ -872,7 +949,7 @@ function viewStep(id) {
     try {
       if (mode === "check") {
         const r = await api("POST", "/api/sql/check", { stepId: s.id, sql });
-        res.innerHTML = renderCheck(r, nextGlobal);
+        res.innerHTML = renderCheck(r, nextGlobal, lesson);
         if (r.ok && !isDone(s)) {
           bump();
           mark("s:" + s.id, "done");
@@ -1299,8 +1376,15 @@ const SECTIONS = [
   { k: "plsql", name: "Собес · PL/SQL", lede: "Блоки, курсоры, исключения, пакеты, триггеры, коллекции, BULK, динамический SQL." },
   { k: "all", name: "Всё", lede: "Все вопросы вперемешку." },
 ];
+const lessonOfQ = (q) => { const m = /^l(\d\d)-/.exec(q.id); return m ? +m[1] : 3; };
+function openedLessonNum() {
+  const next = nextUp();
+  const started = DATA.lessons.filter((l) => l.steps.some(isDone)).map((l) => +l.num);
+  return Math.max(3, next ? +next.lesson.num : 99, ...started);
+}
 const curSection = () => (SECTIONS.some((s) => s.k === progress["quiz:section"]) ? progress["quiz:section"] : "lessons");
-const inSection = (sec) => QUESTIONS.filter((q) => sec === "all" || sectionOf(q) === sec);
+const inSection = (sec) => QUESTIONS.filter((q) =>
+  sec === "all" || (sectionOf(q) === sec && (sec !== "lessons" || lessonOfQ(q) <= openedLessonNum())));
 
 function viewQuiz() {
   setTab("quiz");
@@ -1319,7 +1403,7 @@ function viewQuiz() {
     <div class="page">
       <span class="eyebrow">Тест</span>
       <h1>Вопросы и ловушки</h1>
-      <p class="lede">${meta.lede}${cards.length ? ` ${mc.length} вопросов с вариантами и ${cards.length} устных: сначала ответь вслух, потом открой ответ.` : ""}</p>
+      <p class="lede">${meta.lede}${sec === "lessons" ? ` Открыты вопросы уроков 01–${String(Math.min(openedLessonNum(), DATA.lessons.length)).padStart(2, "0")}: новые появляются, когда доходишь до урока.` : ""}${cards.length ? ` ${mc.length} вопросов с вариантами и ${cards.length} устных: сначала ответь вслух, потом открой ответ.` : ""}</p>
       <div class="secs" role="tablist">
         ${SECTIONS.map((s) => {
           const l = inSection(s.k);
