@@ -657,61 +657,105 @@ function viewConsole() {
 
 /* ================= экран: тест ================= */
 
+const SECTIONS = [
+  { k: "lessons", name: "По урокам", lede: "Вопросы по пройденным урокам: ловушки с NULL, функциями, датами." },
+  { k: "sql", name: "Собес · SQL", lede: "То, что спрашивают на собеседовании по SQL: соединения, группировка, аналитика, подзапросы, NULL." },
+  { k: "plsql", name: "Собес · PL/SQL", lede: "Блоки, курсоры, исключения, пакеты, триггеры, коллекции, BULK, динамический SQL." },
+  { k: "all", name: "Всё", lede: "Все вопросы вперемешку." },
+];
+
 let queue = [];
 let pos = 0;
 let answered = false;
 
+const sectionOf = (q) => q.section || "lessons";
+const curSection = () => (SECTIONS.some((s) => s.k === progress["quiz:section"]) ? progress["quiz:section"] : "lessons");
+const inSection = (sec) => QUESTIONS.filter((q) => sec === "all" || sectionOf(q) === sec);
+const isCard = (q) => q.type === "card";
+
 function viewQuizStart() {
   setTab("quiz");
-  const done = QUESTIONS.filter((q) => progress["q:" + q.id]).length;
-  const ok = QUESTIONS.filter((q) => progress["q:" + q.id] === "ok").length;
-  const wrong = QUESTIONS.filter((q) => progress["q:" + q.id] === "bad").length;
+  const sec = curSection();
+  const meta = SECTIONS.find((s) => s.k === sec);
+  const list = inSection(sec);
+  const ids = (arr) => arr.map((q) => q.id);
+  const done = list.filter((q) => progress["q:" + q.id]).length;
+  const ok = list.filter((q) => progress["q:" + q.id] === "ok").length;
+  const wrong = list.filter((q) => progress["q:" + q.id] === "bad");
+  const cards = list.filter(isCard);
+  const mc = list.filter((q) => !isCard(q));
+
   app.innerHTML = `
     <div class="page quiz">
       <span class="eyebrow">Тест</span>
-      <h1>Вопросы-ловушки</h1>
-      <p class="lede">То, на чём спотыкаются на собеседовании. Отвечай честно — тест запоминает, где ты ошибся.</p>
+      <h1>Вопросы и собеседование</h1>
+      <div class="secs" role="tablist">
+        ${SECTIONS.map((s) => {
+          const l = inSection(s.k);
+          const d = l.filter((q) => progress["q:" + q.id]).length;
+          return `<button class="sec ${s.k === sec ? "on" : ""}" data-sec="${s.k}" type="button" role="tab" aria-selected="${s.k === sec}">${s.name} <span>${d}/${l.length}</span></button>`;
+        }).join("")}
+      </div>
+      <p class="lede">${meta.lede}${cards.length ? ` Здесь ${mc.length} вопросов с вариантами и ${cards.length} устных: сначала ответь вслух, потом открой ответ и честно отметь, знал ли.` : ""}</p>
       <div class="stats" style="grid-template-columns:repeat(3,1fr)">
-        <div class="stat"><b>${done}/${QUESTIONS.length}</b><span>пройдено</span></div>
+        <div class="stat"><b>${done}/${list.length}</b><span>пройдено</span></div>
         <div class="stat"><b>${done ? Math.round((ok / done) * 100) + "%" : "—"}</b><span>верных</span></div>
-        <div class="stat"><b>${wrong}</b><span>с ошибкой</span></div>
+        <div class="stat"><b>${wrong.length}</b><span>с ошибкой</span></div>
       </div>
       <div class="quiz-actions">
-        <button class="btn primary" id="go" type="button">${done < QUESTIONS.length ? (done ? "Продолжить" : "Начать") : "Пройти все заново"}</button>
-        ${wrong ? `<button class="btn" id="err" type="button">Только ошибки · ${wrong}</button>` : ""}
-        ${done && done < QUESTIONS.length ? `<button class="btn ghost" id="all" type="button">Все заново</button>` : ""}
-        ${done ? `<button class="btn ghost" id="reset" type="button">Сбросить результаты</button>` : ""}
+        <button class="btn primary" id="go" type="button">${done < list.length ? (done ? "Продолжить" : "Начать") : "Пройти все заново"}</button>
+        ${wrong.length ? `<button class="btn" id="err" type="button">Только ошибки · ${wrong.length}</button>` : ""}
+        ${cards.length && mc.length ? `<button class="btn" id="oral" type="button">Только устные · ${cards.length}</button>` : ""}
+        ${done && done < list.length ? `<button class="btn ghost" id="all" type="button">Все заново</button>` : ""}
+        ${done ? `<button class="btn ghost" id="reset" type="button">Сбросить раздел</button>` : ""}
       </div>
     </div>`;
 
-  document.getElementById("go").onclick = () => {
-    const unseen = QUESTIONS.filter((q) => !progress["q:" + q.id]).map((q) => q.id);
-    startQuiz(unseen.length ? unseen : shuffle(QUESTIONS.map((q) => q.id)));
-  };
-  const err = document.getElementById("err");
-  if (err) err.onclick = () => startQuiz(shuffle(QUESTIONS.filter((q) => progress["q:" + q.id] === "bad").map((q) => q.id)));
-  const all = document.getElementById("all");
-  if (all) all.onclick = () => startQuiz(shuffle(QUESTIONS.map((q) => q.id)));
-  const reset = document.getElementById("reset");
-  if (reset) reset.onclick = () => {
-    QUESTIONS.forEach((q) => delete progress["q:" + q.id]);
+  app.querySelectorAll(".sec").forEach((b) => (b.onclick = () => { mark("quiz:section", b.dataset.sec); viewQuizStart(); }));
+  const on = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
+  on("go", () => {
+    const unseen = list.filter((q) => !progress["q:" + q.id]);
+    startQuiz(unseen.length ? (sec === "lessons" ? ids(unseen) : shuffle(ids(unseen))) : shuffle(ids(list)));
+  });
+  on("err", () => startQuiz(shuffle(ids(wrong))));
+  on("oral", () => startQuiz(shuffle(ids(cards))));
+  on("all", () => startQuiz(shuffle(ids(list))));
+  on("reset", () => {
+    list.forEach((q) => delete progress["q:" + q.id]);
     save();
     viewQuizStart();
-  };
+  });
 }
 
 function startQuiz(ids) { queue = ids; pos = 0; renderQuestion(); }
+
+function quizHead(q) {
+  return `
+      <a class="back" href="#/quiz">← к тесту</a>
+      <div><span class="eyebrow qtopic">${esc(q.topic)}</span> <span class="eyebrow">· ${pos + 1} из ${queue.length}${isCard(q) ? " · устно" : ""}</span></div>
+      <p class="qtext">${esc(q.q)}</p>
+      ${q.code ? `<pre class="code" style="margin-bottom:16px">${esc(q.code)}</pre>` : ""}`;
+}
+
+function nextButton() {
+  return `<button class="btn primary" id="next" type="button">${pos + 1 >= queue.length ? "Итоги" : "Дальше →"}</button>`;
+}
+
+function bindNext() {
+  const next = document.getElementById("next");
+  next.onclick = () => { pos++; renderQuestion(); window.scrollTo(0, 0); };
+  next.focus();
+}
 
 function renderQuestion() {
   if (pos >= queue.length) return renderQuizEnd();
   answered = false;
   const q = QUESTIONS.find((x) => x.id === queue[pos]);
+  if (!q) { pos++; return renderQuestion(); }
+  if (isCard(q)) return renderCard(q);
   app.innerHTML = `
     <div class="page quiz">
-      <a class="back" href="#/quiz">← к тесту</a>
-      <div><span class="eyebrow qtopic">${esc(q.topic)}</span> <span class="eyebrow">· ${pos + 1} из ${queue.length}</span></div>
-      <p class="qtext">${esc(q.q)}</p>
-      ${q.code ? `<pre class="code" style="margin-bottom:16px">${esc(q.code)}</pre>` : ""}
+      ${quizHead(q)}
       <div class="opts" id="opts"></div>
       <div id="after"></div>
     </div>`;
@@ -725,6 +769,38 @@ function renderQuestion() {
     b.onclick = () => answer(q, o.i, b, opts, order);
     opts.appendChild(b);
   });
+}
+
+function renderCard(q) {
+  app.innerHTML = `
+    <div class="page quiz">
+      ${quizHead(q)}
+      <p class="hint">Ответь вслух, как на собеседовании: 30–60 секунд, своими словами. Потом сверься.</p>
+      <div class="quiz-actions" id="reveal-row"><button class="btn primary" id="reveal" type="button">Показать ответ</button></div>
+      <div id="after"></div>
+    </div>`;
+  const reveal = document.getElementById("reveal");
+  reveal.focus();
+  reveal.onclick = () => {
+    document.getElementById("reveal-row").remove();
+    const after = document.getElementById("after");
+    after.innerHTML = `
+      <div class="why answer"><span class="eyebrow">Ответ</span><div>${q.answer}</div></div>
+      <div class="quiz-actions" id="self">
+        <button class="btn ok" id="knew" type="button">✓ Знал</button>
+        <button class="btn bad" id="didnt" type="button">✗ Не знал</button>
+      </div>`;
+    const grade = (right) => {
+      if (answered) return;
+      answered = true;
+      mark("q:" + q.id, right ? "ok" : "bad");
+      document.getElementById("self").outerHTML = `
+        <div class="quiz-actions"><span class="eyebrow ${right ? "ok" : "bad"}" style="align-self:center">${right ? "Записал: знал" : "Записал в ошибки — вернёмся"}</span>${nextButton()}</div>`;
+      bindNext();
+    };
+    document.getElementById("knew").onclick = () => grade(true);
+    document.getElementById("didnt").onclick = () => grade(false);
+  };
 }
 
 function answer(q, chosen, btn, opts, order) {
@@ -743,10 +819,8 @@ function answer(q, chosen, btn, opts, order) {
       <span class="eyebrow ${right ? "ok" : "bad"}">${right ? "Верно" : "Мимо"}</span>
       <p>${q.why}</p>
     </div>
-    <div class="quiz-actions"><button class="btn primary" id="next" type="button">${pos + 1 >= queue.length ? "Итоги" : "Дальше →"}</button></div>`;
-  const next = document.getElementById("next");
-  next.onclick = () => { pos++; renderQuestion(); window.scrollTo(0, 0); };
-  next.focus();
+    <div class="quiz-actions">${nextButton()}</div>`;
+  bindNext();
 }
 
 function renderQuizEnd() {
@@ -755,10 +829,10 @@ function renderQuizEnd() {
   app.innerHTML = `
     <div class="page quiz">
       <p class="score">${ok} / ${queue.length}</p>
-      <p class="lede">${missed.length ? "Вот что стоит перечитать." : "Чисто. Можно идти дальше."}</p>
+      <p class="lede">${missed.length ? "Вот что стоит повторить." : "Чисто. Можно идти дальше."}</p>
       ${missed.map((id) => {
         const q = QUESTIONS.find((x) => x.id === id);
-        return `<div class="card miss"><span class="eyebrow">${esc(q.topic)}</span><p>${esc(q.q)}</p></div>`;
+        return `<div class="card miss"><span class="eyebrow">${esc(q.topic)}${isCard(q) ? " · устно" : ""}</span><p>${esc(q.q)}</p></div>`;
       }).join("")}
       <div class="quiz-actions">
         ${missed.length ? `<button class="btn primary" id="again" type="button">Пройти ошибки ещё раз</button>` : ""}

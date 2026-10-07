@@ -504,3 +504,22 @@ pre.out {
 .form-error { background: var(--bad-soft); color: var(--bad); border-radius: 9px; padding: 10px 12px; font-size: 14px; margin: 10px 0 0; }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* разделы теста и устные карточки */
+.secs { display: flex; gap: 6px; flex-wrap: wrap; margin: 4px 0 14px; }
+.sec {
+  font: inherit; font-size: 14px; padding: 7px 12px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--panel); color: var(--ink-2);
+}
+.sec span { color: var(--muted); font-size: 12px; margin-left: 4px; font-variant-numeric: tabular-nums; }
+.sec:hover { background: var(--panel-2); }
+.sec.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.sec.on span { color: var(--accent); }
+.hint { color: var(--muted); font-size: 14px; margin: 0 0 4px; }
+.btn.bad { background: var(--bad-soft); border-color: var(--bad); color: var(--bad); font-weight: 600; }
+.why.answer { border-color: var(--line-2); }
+.why.answer > div { color: var(--ink-2); line-height: 1.55; }
+.why.answer ul, .why.answer ol { margin: 6px 0; padding-left: 20px; }
+.why.answer li { margin: 3px 0; }
+.why.answer pre { margin: 8px 0; padding: 10px 12px; border-radius: 8px; background: var(--panel-3); overflow-x: auto; font-size: 13px; }
+.why.answer b { color: var(--ink); }
