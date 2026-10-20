@@ -1,4 +1,28 @@
-# PL/SQL: подготовка
+# PL/SQL Prep
+
+An interactive course and trainer I built to prepare for PL/SQL developer interviews: step-by-step theory, tasks that run against a real Oracle database with server-side auto-checks, spaced repetition and an interview simulator.
+
+> Course content is in Russian. Access is invite-only, so this repository is the code.
+
+## Highlights
+
+- **26 lessons, 204 steps** — from `SELECT` and `NULL` to cursors, packages, `BULK COLLECT`, triggers, mutating tables, dynamic SQL and execution plans.
+- **202 auto-checked tasks** — the editor runs SQL and PL/SQL in Oracle Autonomous Database; answers are compared with reference solutions stored on the server by result rows, `DBMS_OUTPUT` or a verify query, with per-lesson sandbox tables.
+- **349 questions** — 254 lesson quizzes, 45 SQL and 50 PL/SQL interview questions, including 25 oral flash cards.
+- **Learning tools** — spaced repetition (1 / 3 / 7 / 14 / 30 days), timed interview mode with a per-topic breakdown, a 112-entry Oracle cheatsheet, ⌘K search, activity calendar and daily goal.
+- **Security** — bcrypt passwords, hashed session tokens in httpOnly cookies, JSON-only writes against CSRF, login rate limiting; SQL runs with a 20 s timeout, 500-row and 30-runs-per-minute limits.
+
+## Stack
+
+Node.js · Express · PostgreSQL (users, progress) · Oracle Autonomous Database via node-oracledb thin mode (mTLS wallet) · vanilla JS · CodeMirror 5 · Railway
+
+## Lessons
+
+SELECT, WHERE и NULL · Функции Oracle · Преобразования и условия · Сортировка и ограничение строк · Агрегаты и группировка · Соединения таблиц · Подзапросы · Операции над множествами · DML и транзакции · DDL · Аналитические функции · Иерархические запросы · PL/SQL: анатомия блока · Ветвления и циклы · Курсоры I–II · Исключения · Процедуры и функции · Пакеты · Записи и коллекции · BULK COLLECT и FORALL · Триггеры · Мутирующие таблицы и автономные транзакции · Динамический SQL · Эксплуатация и словарь данных · Планы выполнения и производительность
+
+---
+
+## Документация (RU)
 
 Учебник и тренажёр для подготовки к позиции PL/SQL developer: теория по шагам, задачи на учебной схеме и тест с разбором ошибок.
 
@@ -30,7 +54,7 @@
 |---|---|
 | `ORACLE_USER` | пользователь базы (у нас `plsql`) |
 | `ORACLE_PASSWORD` | его пароль |
-| `ORACLE_TNS_ALIAS` | имя сервиса из `tnsnames.ora`, например `smqi0y4a3hyldpa0_low` |
+| `ORACLE_TNS_ALIAS` | имя сервиса из `tnsnames.ora`, например `<dbname>_low` |
 | `ORACLE_WALLET_PASSWORD` | пароль, заданный при скачивании wallet |
 | `ORACLE_WALLET_PEM_B64` | `ewallet.pem` в base64 |
 | `ORACLE_TNSNAMES_B64` | `tnsnames.ora` в base64 |
