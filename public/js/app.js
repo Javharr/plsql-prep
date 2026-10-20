@@ -1206,11 +1206,6 @@ function chooseOpt(n) {
   run.state = "answered";
   recordAnswer(q.id, right);
   const btns = [...document.querySelectorAll(".opt")];
-  if (run.mode === "interview") {
-    btns.forEach((b, k) => { b.disabled = true; b.classList.add(k === n ? "is-pick" : "is-dim"); });
-    setTimeout(() => { if (RUN === run && run.state === "answered") nextQ(); }, 260);
-    return;
-  }
   btns.forEach((b, k) => {
     b.disabled = true;
     if (run.order[k].i === q.a) b.classList.add("is-ok");
@@ -1219,7 +1214,7 @@ function chooseOpt(n) {
   });
   $("after").innerHTML = `
     <div class="why">
-      <span class="eyebrow ${right ? "ok" : "bad"}">${icon(right ? "check" : "x", "sm")} ${right ? "Верно" : "Мимо — вернётся завтра на повторении"}</span>
+      <span class="eyebrow ${right ? "ok" : "bad"}">${icon(right ? "check" : "x", "sm")} ${right ? "Верно" : `Мимо — правильный ответ: ${esc(q.opts[q.a])}`}</span>
       <p>${q.why}</p>
     </div>
     <div class="quiz-actions">${nextButton()}<span class="kh"><kbd>Enter</kbd></span></div>`;
@@ -1264,7 +1259,7 @@ function runKey(e) {
   } else if (RUN.state === "revealed") {
     if (code === "Digit1" || code === "Numpad1") gradeCard(true);
     else if (code === "Digit2" || code === "Numpad2") gradeCard(false);
-  } else if (RUN.state === "answered" && RUN.mode !== "interview") {
+  } else if (RUN.state === "answered") {
     if (code === "Enter" || code === "Space" || code === "ArrowRight") { e.preventDefault(); nextQ(); }
   }
 }
@@ -1533,7 +1528,7 @@ function viewInterview() {
     <div class="page">
       <span class="eyebrow">Режим собеседования</span>
       <h1>Пробное собеседование</h1>
-      <p class="lede">Случайные вопросы из банка собеседований, таймер и никаких подсказок по ходу — как на настоящем интервью. Разбор и оценка по темам — в конце.</p>
+      <p class="lede">Случайные вопросы из банка собеседований, таймер и правильный ответ с объяснением сразу после каждого вопроса. Оценка по темам и список ошибок — в конце.</p>
       <div class="two-col stagger">
         <section class="card setup glow">
           <div class="field"><label>Сколько вопросов</label>${seg("n", [[10, "10"], [15, "15"], [20, "20"], [30, "30"]])}</div>
