@@ -9,6 +9,7 @@ An interactive course and trainer I built to prepare for PL/SQL developer interv
 - **26 lessons, 204 steps** — from `SELECT` and `NULL` to cursors, packages, `BULK COLLECT`, triggers, mutating tables, dynamic SQL and execution plans.
 - **202 auto-checked tasks** — the editor runs SQL and PL/SQL in Oracle Autonomous Database; answers are compared with reference solutions stored on the server by result rows, `DBMS_OUTPUT` or a verify query, with per-lesson sandbox tables.
 - **349 questions** — 254 lesson quizzes, 45 SQL and 50 PL/SQL interview questions, including 25 oral flash cards.
+- **Interview theory** — 27 topics (normalization, ACID, isolation levels, indexes, cursors, exceptions, packages, triggers, collections, BULK, dynamic SQL, performance…): explanation with examples, 168 interview questions with answers and 196 multiple-choice questions with explanations.
 - **Learning tools** — spaced repetition (1 / 3 / 7 / 14 / 30 days), timed interview mode with a per-topic breakdown, a 112-entry Oracle cheatsheet, ⌘K search, activity calendar and daily goal.
 - **Security** — bcrypt passwords, hashed session tokens in httpOnly cookies, JSON-only writes against CSRF, login rate limiting; SQL runs with a 20 s timeout, 500-row and 30-runs-per-minute limits.
 
@@ -109,6 +110,9 @@ public/js/app.js               — вход, главная, шаги (теор�
 public/content/lessons.json    — уроки и шаги: теория, примеры, задачи, решения
 public/content/questions.json  — банк вопросов для теста
 public/content/cheatsheet.json — шпаргалка: функции и конструкции Oracle (генерируется, можно править руками)
+public/content/theory.json     — раздел «Теория» (собирается из content-src/theory/*.md, руками не править)
+content-src/theory/*.md        — исходники тем теории
+scripts/build-theory.mjs       — сборка theory.json
 ```
 
 API:
@@ -134,14 +138,15 @@ API:
 
 - **Главная** — дашборд: серия дней, цель на день, календарь активности, слабые темы, готовность к собеседованию.
 - **Уроки** — шаги с теорией и задачей, редактор с автопроверкой.
+- **Теория** — темы собеседования: объяснение с примерами, вопросы с ответами (раскрываются или тренируются карточками) и тест с вариантами. Вопросы теории попадают в общий банк: их видят «Тест», «Собеседование» и «Повторение».
 - **Повторение** — интервальное: ошибка возвращается через 1 день, верные ответы — через 3, 7, 14, 30 дней.
 - **Тест** — разделы «По урокам», «Собес · SQL», «Собес · PL/SQL», тренировка по темам. Клавиши 1–4 / A–D, Enter.
-- **Собеседование** — случайные вопросы на время без подсказок, итог с оценкой и разбором по темам, история попыток.
+- **Собеседование** — случайные вопросы на время; после каждого ответа — правильный вариант и объяснение, в конце итог с оценкой по темам и список ошибок, история попыток.
 - **Шпаргалка** — справочник функций с примерами на учебной схеме, кнопка «В консоль».
 - **Поиск** — ⌘K / Ctrl+K или `/`: разделы, шпаргалка, шаги уроков, вопросы.
 - Тема: как в системе, тёмная или светлая (переключатель внизу меню).
 
-Ключи прогресса: `s:<шаг>`, `q:<вопрос>` (ok/bad), `r:<вопрос>` ({b: ступень, d: дата повторения}), `act` (действий по дням), `goal`, `iv:hist`, `iv:cfg`, `quiz:section`, `sql:<шаг>`, `console:*`.
+Ключи прогресса: `s:<шаг>`, `q:<вопрос>` (ok/bad), `r:<вопрос>` ({b: ступень, d: дата повторения}), `act` (действий по дням), `goal`, `iv:hist`, `iv:cfg`, `t:<тема>` (read — тема прочитана), `quiz:section`, `sql:<шаг>`, `console:*`.
 
 ## Как добавить материал
 
@@ -185,3 +190,31 @@ API:
 ```json
 { "id": "card-…", "type": "card", "section": "plsql", "topic": "Курсоры", "q": "Вопрос", "answer": "Ответ" }
 ```
+
+### Тема теории
+
+Файл `content-src/theory/NN-имя.md` (номер задаёт порядок), после правки — `node scripts/build-theory.mjs`:
+
+````md
+---
+id: normalization
+title: Нормализация
+group: sql              # sql или plsql
+summary: Одна строка о теме
+lessons: l10            # связанные уроки, необязательно
+---
+
+## Заголовок раздела теории
+Текст в markdown: абзацы, списки, ```sql-блоки, таблицы, `код`, **жирный**, > выноска.
+
+## ? Вопрос с собеседования
+Ответ в markdown.
+
+## Тест: Текст вопроса с вариантами
+- неверный
+- [x] верный
+- неверный
+> Объяснение, почему так.
+````
+
+Id вопросов строятся по порядку (`th-<тема>-q1`, `th-<тема>-c1`), поэтому новые вопросы лучше дописывать в конец темы — иначе сдвинется прогресс по уже отвеченным.

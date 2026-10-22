@@ -14,6 +14,7 @@ const IV_SEC_PER_Q = 75;             // время на вопрос в режи
 let DATA = null;          // lessons.json
 let QUESTIONS = [];       // questions.json
 let CHEAT = [];           // cheatsheet.json
+let THEORY = [];          // theory.json: темы раздела «Теория»
 let USER = null;          // { username }
 let SQL_ENABLED = false;  // подключена ли Oracle
 let SCHEMA = null;        // таблицы и столбцы из базы (для консоли)
@@ -89,6 +90,8 @@ const ICON_PATHS = {
   lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
   copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
   trophy: '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/>',
+  cap: '<path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/><path d="M22 10v6"/>',
+  list: '<path d="M9 6h12M9 12h12M9 18h12"/><path d="M4 6h.01M4 12h.01M4 18h.01"/>',
   table: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/>',
 };
 const icon = (name, cls = "") => `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICON_PATHS[name] || ""}</svg>`;
@@ -309,6 +312,7 @@ const ROADMAP = [
 const NAV = [
   { k: "home", href: "#/", label: "Главная", icon: "home", tab: true },
   { k: "lessons", href: "#/lessons", label: "Уроки", icon: "book", tab: true },
+  { k: "theory", href: "#/theory", label: "Теория", icon: "cap", tab: true },
   { k: "review", href: "#/review", label: "Повторение", icon: "repeat", tab: true, short: "Повтор" },
   { k: "quiz", href: "#/quiz", label: "Тест", icon: "quiz", tab: true },
   { k: "interview", href: "#/interview", label: "Собеседование", icon: "mic", tab: true, short: "Собес" },
@@ -699,6 +703,7 @@ function viewHome() {
 
       <div class="section-head"><h2>Инструменты</h2></div>
       <section class="quick">
+        <a class="card glow" href="#/theory"><span class="q-ic ok">${icon("cap")}</span><h3>Теория</h3><p>${THEORY.length} тем: объяснение, вопросы с ответами, тест</p></a>
         <a class="card glow" href="#/interview"><span class="q-ic">${icon("mic")}</span><h3>Собеседование</h3><p>15 вопросов на время, разбор в конце</p></a>
         <a class="card glow" href="#/review"><span class="q-ic warm">${icon("repeat")}</span><h3>Повторение</h3><p>Ошибки возвращаются через 1, 3, 7 дней</p></a>
         <a class="card glow" href="#/cheat"><span class="q-ic ok">${icon("cheat")}</span><h3>Шпаргалка</h3><p>${CHEAT.length} функций и конструкций Oracle</p></a>
@@ -770,6 +775,163 @@ function viewLessons() {
         <div class="section-head"><h2>Дальше по программе</h2></div>
         <div class="roadmap">${ahead.map(([n, t]) => `<div class="road-item ${+n >= 13 ? "pl" : ""}">${icon("lock", "sm")}<span class="n">${n}</span><span>${esc(t)}</span></div>`).join("")}</div>` : ""}
     </div>`;
+}
+
+/* ================= экран: теория ================= */
+
+const THEORY_GROUPS = [
+  { k: "sql", title: "SQL и базы данных", text: "Модель данных, нормализация, запросы, транзакции, индексы — то, что спрашивают в первой половине собеседования." },
+  { k: "plsql", title: "PL/SQL", text: "Блоки, курсоры, исключения, подпрограммы, пакеты, триггеры, коллекции, BULK, динамический SQL и производительность." },
+];
+
+// вопросы из теории становятся обычными вопросами банка: их видят «Тест», «Собеседование» и «Повторение»
+function absorbTheory(topics, questions) {
+  THEORY = topics;
+  for (const t of topics) {
+    t.quizIds = t.quiz.map((q, i) => {
+      const id = `th-${t.id}-q${i + 1}`;
+      questions.push({ id, section: t.group, topic: t.title, theory: t.id, q: q.q, ...(q.code ? { code: q.code } : {}), opts: q.opts, a: q.a, why: q.why });
+      return id;
+    });
+    t.cardIds = t.qa.map((x, i) => {
+      const id = `th-${t.id}-c${i + 1}`;
+      questions.push({ id, type: "card", section: t.group, topic: t.title, theory: t.id, q: x.q, answer: x.a });
+      return id;
+    });
+  }
+}
+
+const theoryById = (id) => THEORY.find((t) => t.id === id);
+function theoryStats(t) {
+  const ids = [...t.quizIds, ...t.cardIds];
+  const seen = ids.filter((id) => progress["q:" + id]).length;
+  const ok = ids.filter((id) => progress["q:" + id] === "ok").length;
+  return { total: ids.length, seen, ok, read: progress["t:" + t.id] === "read" };
+}
+
+// подсветка кода в HTML теории: <pre class="code" data-sql>
+function hlTheory(root) {
+  root.querySelectorAll("pre[data-sql]").forEach((pre) => {
+    pre.innerHTML = hl(pre.textContent);
+    pre.classList.add("hl");
+    pre.removeAttribute("data-sql");
+  });
+}
+
+function theoryCard(t) {
+  const s = theoryStats(t);
+  const p = pct(s.ok, s.total);
+  return `
+    <a class="card glow lesson-card th-card" href="#/theory/${t.id}">
+      <span class="num">${t.group === "sql" ? "SQL" : "PL/SQL"}${s.read ? ` · <span class="read">прочитано ✓</span>` : ""}</span>
+      <h3>${esc(t.title)}</h3>
+      <p>${esc(t.summary)}</p>
+      <div class="foot">
+        <div class="meter ${s.ok === s.total ? "ok" : ""}"><i style="width:${p}%"></i></div>
+        <div class="meta"><span>${t.sections.length} ${plural(t.sections.length, "раздел", "раздела", "разделов")} · ${qWord(t.qa.length)} · тест ${t.quiz.length}</span><span>${s.seen ? `${s.ok}/${s.total}` : ""}</span></div>
+      </div>
+    </a>`;
+}
+
+function viewTheory() {
+  setTab("theory");
+  const all = THEORY.flatMap((t) => [...t.quizIds, ...t.cardIds]);
+  const cards = THEORY.flatMap((t) => t.cardIds);
+  const mc = THEORY.flatMap((t) => t.quizIds);
+  const read = THEORY.filter((t) => progress["t:" + t.id] === "read").length;
+  app.innerHTML = `
+    <div class="page">
+      <div class="page-head">
+        <div class="grow">
+          <span class="eyebrow">Подготовка к собеседованию</span>
+          <h1>Теория</h1>
+          <p class="lede">${THEORY.length} ${plural(THEORY.length, "тема", "темы", "тем")}. В каждой: объяснение с примерами, вопросы с собеседования с ответами и тест с вариантами. Прочитано ${read} из ${THEORY.length}.</p>
+        </div>
+      </div>
+      ${THEORY.length ? `
+      <div class="quiz-actions" style="margin-top:0">
+        <button class="btn primary" id="th-oral" type="button">${icon("mic", "sm")} Устные вопросы вперемешку · ${cards.length}</button>
+        <button class="btn" id="th-mc" type="button">${icon("quiz", "sm")} Тест по всей теории · ${mc.length}</button>
+      </div>` : `<div class="empty-state">${icon("cap")}<h3>Теория не загрузилась</h3><p>Нет файла /content/theory.json — собери его: node scripts/build-theory.mjs</p></div>`}
+      ${THEORY_GROUPS.map((g) => {
+        const ts = THEORY.filter((t) => t.group === g.k);
+        if (!ts.length) return "";
+        const r = ts.filter((t) => progress["t:" + t.id] === "read").length;
+        return `<div class="section-head"><h2>${g.title}</h2><a>${r}/${ts.length} прочитано</a></div>
+          <p class="lede" style="margin:-6px 0 16px">${g.text}</p>
+          <div class="lessons">${ts.map(theoryCard).join("")}</div>`;
+      }).join("")}
+    </div>`;
+  const on = (id, fn) => { const el = $(id); if (el) el.onclick = fn; };
+  on("th-oral", () => startRun(shuffle(cards).slice(0, 20), { mode: "practice", back: "#/theory", title: "Теория · устно" }));
+  on("th-mc", () => startRun(shuffle(mc).slice(0, 20), { mode: "practice", back: "#/theory", title: "Теория · тест" }));
+}
+
+function viewTheoryTopic(id) {
+  setTab("theory");
+  const t = theoryById(id);
+  if (!t) return viewTheory();
+  const i = THEORY.indexOf(t);
+  const prev = THEORY[i - 1];
+  const next = THEORY[i + 1];
+  const s = theoryStats(t);
+  const mcOk = t.quizIds.filter((q) => progress["q:" + q] === "ok").length;
+  const mcSeen = t.quizIds.filter((q) => progress["q:" + q]).length;
+  const lessons = t.lessons.map((lid) => DATA.lessons.find((l) => l.id === lid)).filter(Boolean);
+  app.innerHTML = `
+    <div class="page th-page">
+      <a class="back" href="#/theory">${icon("back", "sm")} вся теория</a>
+      <span class="eyebrow" style="display:block">${t.group === "sql" ? "SQL и базы данных" : "PL/SQL"} · тема ${i + 1} из ${THEORY.length}</span>
+      <h1>${esc(t.title)}</h1>
+      <p class="lede">${esc(t.summary)}</p>
+      <nav class="th-toc">
+        ${t.sections.map((x, k) => `<button type="button" data-go="th-s${k}">${esc(x.h)}</button>`).join("")}
+        ${t.qa.length ? `<button type="button" data-go="th-qa" class="accent">${icon("mic", "sm")} Вопросы · ${t.qa.length}</button>` : ""}
+        ${t.quiz.length ? `<button type="button" data-go="th-quiz" class="accent">${icon("quiz", "sm")} Тест · ${t.quiz.length}</button>` : ""}
+      </nav>
+      ${t.sections.map((x, k) => `
+        <section class="card th-sec" id="th-s${k}">
+          <h2>${esc(x.h)}</h2>
+          <div class="theory prose">${x.html}</div>
+        </section>`).join("")}
+      ${lessons.length ? `<div class="th-links">${icon("book", "sm")} Практика в уроках: ${lessons.map((l) => `<a href="#/lesson/${l.id}">Урок ${esc(l.num)} · ${esc(l.title)}</a>`).join(" ")}</div>` : ""}
+      <label class="th-read"><input type="checkbox" id="th-read" ${s.read ? "checked" : ""}> Прочитал тему</label>
+
+      ${t.qa.length ? `
+      <div class="section-head" id="th-qa"><h2>${icon("mic", "sm")} Вопросы на собеседовании</h2><a>${qWord(t.qa.length)}</a></div>
+      <p class="lede" style="margin:-6px 0 14px">Сначала попробуй ответить вслух сам, потом раскрой ответ. Или пройди их карточками — сайт запомнит, что ты не знал, и вернёт на повторении.</p>
+      <div class="qa-list">${t.qa.map((x, k) => {
+        const st = progress["q:" + t.cardIds[k]];
+        return `<details class="card qa">
+          <summary><span class="n ${st || ""}">${st === "ok" ? "✓" : st === "bad" ? "!" : k + 1}</span><p>${esc(x.q)}</p><span class="more">ответ ▾</span></summary>
+          <div class="body theory prose">${x.a}</div>
+        </details>`;
+      }).join("")}</div>
+      <div class="quiz-actions"><button class="btn" id="th-cards" type="button">${icon("mic", "sm")} Тренировать устно · ${t.qa.length}</button></div>` : ""}
+
+      ${t.quiz.length ? `
+      <div class="section-head" id="th-quiz"><h2>${icon("quiz", "sm")} Проверь себя</h2><a>${mcSeen ? `верно ${mcOk} из ${t.quiz.length}` : `${qWord(t.quiz.length)} с вариантами`}</a></div>
+      <div class="card th-test">
+        <div>
+          <h3>Тест по теме «${esc(t.title)}»</h3>
+          <p>После каждого ответа — правильный вариант и объяснение. Ошибки попадут в повторение.</p>
+          <div class="meter ${mcOk === t.quiz.length ? "ok" : ""}"><i style="width:${pct(mcOk, t.quiz.length)}%"></i></div>
+        </div>
+        <button class="btn primary lg" id="th-go" type="button">${icon("play", "sm")} ${mcSeen ? "Пройти ещё раз" : "Начать тест"}</button>
+      </div>` : ""}
+
+      <div class="th-nav">
+        ${prev ? `<a class="card" href="#/theory/${prev.id}"><small>← Предыдущая</small><b>${esc(prev.title)}</b></a>` : "<span></span>"}
+        ${next ? `<a class="card right" href="#/theory/${next.id}"><small>Следующая →</small><b>${esc(next.title)}</b></a>` : "<span></span>"}
+      </div>
+    </div>`;
+  hlTheory(app);
+  app.querySelectorAll("[data-go]").forEach((b) => (b.onclick = () => $(b.dataset.go)?.scrollIntoView({ behavior: "smooth", block: "start" })));
+  $("th-read").onchange = (e) => mark("t:" + t.id, e.target.checked ? "read" : undefined);
+  const opts = { mode: "practice", back: "#/theory/" + t.id, title: t.title };
+  const on = (bid, fn) => { const el = $(bid); if (el) el.onclick = fn; };
+  on("th-go", () => startRun(t.quizIds.slice(), opts));
+  on("th-cards", () => startRun(shuffle(t.cardIds), { ...opts, title: t.title + " · устно" }));
 }
 
 /* ================= песочница урока ================= */
@@ -1665,6 +1827,9 @@ function paletteResults(query) {
   if (p.length) groups.push(["Разделы", p]);
   const ch = top(CHEAT.filter((c) => has(cheatText(c))).map((c) => ({ icon: "cheat", title: c.name, sub: `${c.cat} · ${stripTags(c.desc)}`, go: () => navigate("#/cheat/" + c.id) })), 6);
   if (ch.length) groups.push(["Шпаргалка", ch]);
+  const th = top(THEORY.filter((t) => has(`${t.title} ${t.summary} ${t.sections.map((x) => x.h + " " + stripTags(x.html)).join(" ")}`.toLowerCase()))
+    .map((t) => ({ icon: "cap", title: t.title, sub: `Теория · ${t.summary}`, go: () => navigate("#/theory/" + t.id) })), 5);
+  if (th.length) groups.push(["Теория", th]);
   const st = top(allSteps().filter((s) => has(`${s.title} ${s.lesson.title} ${stripTags(s.theory)}`.toLowerCase()))
     .map((s) => ({ icon: "book", title: s.title, sub: `Урок ${s.lesson.num} · ${s.lesson.title}`, go: () => navigate("#/step/" + s.id) })), 5);
   if (st.length) groups.push(["Шаги уроков", st]);
@@ -1773,6 +1938,7 @@ function route() {
   if (page === "step" && arg) return viewStep(arg);
   if (page === "lesson" && arg) return viewLesson(arg);
   if (page === "lessons") return viewLessons();
+  if (page === "theory") return arg ? viewTheoryTopic(decodeURIComponent(arg)) : viewTheory();
   if (page === "review") return viewReview();
   if (page === "quiz") return viewQuiz();
   if (page === "interview") return viewInterview();
@@ -1791,7 +1957,8 @@ async function boot() {
       fetch("/content/lessons.json").then((r) => r.json()),
       fetch("/content/questions.json").then((r) => r.json()),
       fetch("/content/cheatsheet.json").then((r) => (r.ok ? r.json() : [])).catch(() => []),
-    ]);
+      fetch("/content/theory.json").then((r) => (r.ok ? r.json() : { topics: [] })).catch(() => ({ topics: [] })),
+    ]).then(([d, q, c, t]) => { absorbTheory(t.topics || [], q); return [d, q, c]; });
   } catch (e) {
     app.innerHTML = `<div class="page"><h1>Не загрузился контент</h1><p class="lede">${esc(e.message)}</p></div>`;
     return;
